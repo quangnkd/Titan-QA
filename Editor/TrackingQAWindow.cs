@@ -54,8 +54,8 @@ namespace Titan.TrackingQA
         ScrollView _detailScroll = null!;
         static Font? _mono;
 
-        [MenuItem("Titan/Tracking QA")]
-        public static void Open() => GetWindow<TrackingQAWindow>("Tracking QA").minSize = new Vector2(720, 420);
+        [MenuItem("Titan/QAUTO/Tracking QA CheckAll", false, 1)]
+        public static void Open() => GetWindow<TrackingQAWindow>("Tracking QA · CheckAll").minSize = new Vector2(720, 420);
 
         void OnEnable() => QaRunner.Changed += Refresh;
         void OnDisable() => QaRunner.Changed -= Refresh;
@@ -90,6 +90,7 @@ namespace Titan.TrackingQA
             top.Add(_checkBtn);
             _cancelBtn = new Button(QaRunner.Cancel) { text = "Huỷ" };
             top.Add(_cancelBtn);
+            top.Add(new Button(RecordWindow.Open) { text = "Record", tooltip = "Mở cửa sổ Record — ghi và kiểm event khi chơi trong Editor (bấm Play là bắt đầu ghi)" });
             root.Add(top);
 
             _status = new Label();

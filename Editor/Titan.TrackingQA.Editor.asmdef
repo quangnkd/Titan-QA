@@ -1,7 +1,7 @@
 {
     "name": "Titan.TrackingQA.Editor",
     "rootNamespace": "Titan.TrackingQA",
-    "references": [],
+    "references": ["Titan.TrackingQA.Recorder"],
     "includePlatforms": ["Editor"],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

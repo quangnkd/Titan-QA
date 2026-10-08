@@ -67,6 +67,7 @@ Button.primary:disabled { background-color: var(--unity-colors-button-background
 .list { min-width: 220px; }
 .row { padding: 4px 6px; height: 44px; justify-content: center; }
 .row-1 { margin-bottom: 2px; }
+.row .pill, .row .fid { white-space: nowrap; flex-shrink: 0; }
 .row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .subj { -unity-font-style: bold; margin-left: 6px; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; }
 .fid { margin-left: 6px; opacity: 0.55; font-size: 10px; }
@@ -155,3 +156,9 @@ Button.primary:disabled { background-color: var(--unity-colors-button-background
 .sc-check.error { color: var(--c-err); }
 .sc-check.warn { color: var(--c-warn); }
 .sc-check.ok { color: var(--c-acc); }
+
+/* Record */
+.rec-status { margin-left: 8px; -unity-font-style: bold; }
+.rec-status.live { color: var(--c-err); }
+.rec-sessions { min-width: 220px; }
+.sc-check.known { opacity: 0.55; }
