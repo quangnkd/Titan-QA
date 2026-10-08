@@ -1,7 +1,7 @@
 {
   "id": "TC-031",
   "group": "G. Quảng cáo",
-  "title": "Thưởng từ quảng cáo phải có resource_update type earn, source là quảng cáo. \"Chỉ thưởng khi end_type = done\" là suy luận, cần chốt",
+  "title": "Thưởng từ quảng cáo phải có resource_update type earn, source là quảng cáo; chỉ thưởng khi end_type = done (suy luận, đã chốt 08/10/2026)",
   "category": "Lỗi",
   "appliesWhen": {
     "doc": "ads_complete"
@@ -11,7 +11,7 @@
   },
   "staticCheck": "partial",
   "runtimeCheck": "yes",
-  "basis": "mixed",
-  "source": "Master + suy luận",
+  "basis": "doc",
+  "source": "Master + suy luận đã chốt 08/10/2026",
   "status": "active"
 }

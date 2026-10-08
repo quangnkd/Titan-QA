@@ -149,3 +149,11 @@ Button.primary:disabled { background-color: var(--unity-colors-button-background
 .empty { white-space: normal; padding: 24px; -unity-text-align: middle-center; opacity: 0.7; flex-grow: 1; }
 .log { margin-top: 4px; max-height: 180px; }
 .log Label { white-space: normal; font-size: 11px; }
+
+/* Kịch bản (log giả lập) */
+.sc-item { align-items: flex-start; margin: 2px 0; }
+.sc-item > .tag { flex-shrink: 0; margin-top: 2px; }
+.sc-check { margin: 2px 0; }
+.sc-check.error { color: var(--c-err); }
+.sc-check.warn { color: var(--c-warn); }
+.sc-check.ok { color: var(--c-acc); }

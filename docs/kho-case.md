@@ -1,6 +1,6 @@
 # Kho case tracking (TC-xxx) — bản đề xuất để duyệt
 
-> Trạng thái: **đã có trong code** (mục 7, bước 1–3): 44 case ở `Knowledge/common/cases/`, mỗi lỗi ghi mã case, tab **Theo case** trong cửa sổ Tracking QA, case riêng game `G-xxx` chạy được. Các câu ở mục 8 vẫn chờ chốt; phần suy luận của TC-030, TC-031, TC-037 chưa bật.
+> Trạng thái: **đã có trong code** (mục 7, bước 1–3): 44 case ở `Knowledge/common/cases/`, mỗi lỗi ghi mã case, tab **Theo case** trong cửa sổ Tracking QA, case riêng game `G-xxx` chạy được. Các câu ở mục 8 vẫn chờ chốt; phần suy luận của TC-030, TC-031, TC-037 đã chốt bật.
 
 ## 1. Kho case là gì
 
@@ -95,7 +95,7 @@ Mỗi loại là 1 đoạn code kiểm tra, viết 1 lần, dùng cho mọi case
 | `counter` | Biến đếm tăng đúng 1 khi làm hành động X | 🆕 cần log giả lập | ✅ |
 | `runtime_value` | Giá trị chỉ biết khi chạy (vd `remaining_value` = số dư thật) | — | ✅ |
 | `sequence` | Thứ tự / đi cặp giữa các event (phễu quảng cáo, phễu IAP, start–end, open–close) | ⏳ một phần | ✅ |
-| `resource_change_tracked` | Mọi chỗ đổi tài nguyên trong code đều có `resource_update` trên cùng luồng | 🆕 cần làm | ✅ |
+| `resource_change_tracked` | Mọi chỗ đổi tài nguyên trong code đều có `resource_update` trên cùng luồng | ⏳ có (nhận biến theo tên — `tracking-rules.json` → `resourceTracking`) | ✅ |
 | `no_duplicate_with_package` | Game không bắn lại event package Titan đã bắn | 🆕 cần làm | ✅ |
 | `custom` | Case kiểu mới chưa có loại kiểm tra → chỉ lưu mô tả + cách tái hiện, gắn nhãn "chưa tự kiểm được" | ⏳ | ⏳ |
 
@@ -155,7 +155,7 @@ Chuyển từ ~30 luật đang chạy trong lõi và 12 lỗi hay gặp (SKILL.m
 | **B. Luồng chơi (theo Master)** | | | | | |
 | TC-010 | Mỗi lượt chơi có đúng 1 `level_start` và 1 `level_end` — không thừa, không thiếu ở nhánh nào (thắng, thua, replay, home, thoát) | Lỗi | ⏳ một phần (có: `level_end` bắn 2 lần) | ✅ | flow_double_level_end |
 | TC-011 | Kill app / thoát giữa level → lần mở sau phải có `level_end win=2` | Lỗi | ⏳ một phần (qua TC-006, TC-002) | ✅ | mới |
-| TC-012 | `level_end.level_id` là level đang chơi — không tăng level trước khi bắn | Lỗi | 🆕 | ✅ | mới (SKILL #3) |
+| TC-012 | `level_end.level_id` là level đang chơi — không tăng level trước khi bắn | Lỗi | 🆕 (log giả lập kịch bản "Thắng" đã chỉ ra; chưa thành mục lỗi) | ✅ | mới (SKILL #3) |
 | TC-013 | Không bắn `level_exit` khi quảng cáo toàn màn hình làm app pause (chỉ áp dụng khi doc có `level_exit`; Master: chỉ cần `level_exit` nếu không log được `level_end win=2`) | Lỗi | 🆕 | ✅ | mới (SKILL #4) |
 | TC-014 | `level_play` bắn đúng mốc theo doc của game (Master: 1 = move đầu, 2/5/8 ≈ 20/50/80%, 0 = stuck), mỗi `type` chỉ 1 lần mỗi lượt. Ví dụ: chơi hết level → đúng `[1, 2, 5, 8]` | Lỗi | 🆕 | ✅ | mới (Master) |
 | TC-015 | `play_index` = lần thứ mấy chơi level đó: tăng 1 mỗi `level_start`, giống nhau ở mọi event cùng lượt. Ví dụ: chơi lần 1 → 1, chơi lại → 2 | Lỗi | 🆕 cần log giả lập | ✅ | mới (Master) |
@@ -178,17 +178,17 @@ Chuyển từ ~30 luật đang chạy trong lõi và 12 lỗi hay gặp (SKILL.m
 | TC-028 | `level_unlock` cập nhật khi user **bắt đầu** level mới, không phải lúc thắng level trước | Lỗi | ⏳ một phần (package Titan tự set `level_unlock` từ hàm game cung cấp → kiểm hàm đó trả level nào) | ✅ | mới (Master) |
 | TC-029 | Chế độ chơi phụ có cặp start / end (`level_daily_challenge_*`, `level_adventure_*`, `challenge_*`…) theo cùng quy tắc lượt chơi: đúng 1 end mỗi start, có end khi thoát giữa chừng | Lỗi | ⏳ một phần | ✅ | mới (doc các game) |
 | **G. Quảng cáo — bổ sung** | | | | | |
-| TC-030 | `ads_show` chỉ bắn cho inter / rewarded; `ads_complete.end_type` (quit / done) chỉ cho rewarded (Master ghi rõ). Thứ tự `ads_show` → `ad_impression_*` → `ads_complete` là **suy luận, cần chốt** | Lỗi | ⏳ một phần | ✅ | Master + suy luận |
-| TC-031 | Thưởng từ quảng cáo phải có `resource_update` type earn, source là quảng cáo (Master: earn tính cả tài nguyên từ quảng cáo). "Chỉ thưởng khi `end_type = done`" là **suy luận, cần chốt** | Lỗi | ⏳ một phần | ✅ | Master + suy luận |
+| TC-030 | `ads_show` chỉ bắn cho inter / rewarded; `ads_complete.end_type` (quit / done) chỉ cho rewarded (Master ghi rõ). Thứ tự `ads_show` → `ad_impression_*` → `ads_complete` (suy luận, **đã chốt 08/10/2026**) | Lỗi | ⏳ một phần | ✅ | Master + suy luận |
+| TC-031 | Thưởng từ quảng cáo phải có `resource_update` type earn, source là quảng cáo (Master: earn tính cả tài nguyên từ quảng cáo). chỉ thưởng khi `end_type = done` (suy luận, **đã chốt 08/10/2026**) | Lỗi | ⏳ một phần | ✅ | Master + suy luận |
 | TC-032 | `ad_impression_banner` cộng gộp, bắn khi kết thúc level / session, `count` = tổng impression | Lỗi | ⏳ một phần (bắn từ chỗ kết thúc level / session) | ✅ | mới (Master) |
 | **H. IAP** | | | | | |
 | TC-033 | Phễu IAP: `iap_show` → `iap_click` → `Purchase_Success` hoặc `iap_failed`; `iap_close` có `iap_duration`; cùng `product_id`, `placement` trong 1 lần mua | Lỗi | ⏳ một phần | ✅ | mới (Master) |
 | TC-034 | `Purchase_Success.iap_index` tăng 1 mỗi lần mua; gói có tài nguyên thì mua xong phải có `resource_update` type buy, source = tên gói (gói không có tài nguyên như remove ads → không áp dụng) | Lỗi | 🆕 | ✅ | mới (Master) |
 | **I. Tài nguyên** | | | | | |
-| TC-035 | **Mọi chỗ code làm đổi coin / booster / lives đều bắn `resource_update`** với type đúng (buy = tiền thật, earn = chơi / quảng cáo, spend = tiêu) | Lỗi | 🆕 (tìm chỗ đổi tài nguyên không có tracking) | ✅ | mới (Master) |
+| TC-035 | **Mọi chỗ code làm đổi coin / booster / lives đều bắn `resource_update`** với type đúng (buy = tiền thật, earn = chơi / quảng cáo, spend = tiêu) | Nghi ngờ (nhận biết biến tài nguyên theo tên) | ⏳ một phần (có: tìm chỗ đổi tài nguyên tương đối không có resource_update trên luồng) | ✅ | resource_change_untracked |
 | TC-036 | `lives_infinity` cập nhật khi đổi level (phần sau `resource_update` đã nằm trong TC-009) | Lỗi | ⏳ một phần | ✅ | mới (Master) |
 | **J. Tutorial, live ops, tính năng** | | | | | |
-| TC-037 | `tutorial.step_name` theo mẫu trong doc của game (Master ví dụ `step_N_start` / `step_N_complete`), đúng thứ tự. "Mỗi bước chỉ 1 lần, không lặp khi chơi lại" là **suy luận, cần chốt** | Lỗi | ⏳ một phần | ✅ | Master + suy luận |
+| TC-037 | `tutorial.step_name` theo mẫu trong doc của game (Master ví dụ `step_N_start` / `step_N_complete`), đúng thứ tự. mỗi bước chỉ 1 lần, không lặp khi chơi lại (suy luận, **đã chốt 08/10/2026**) | Lỗi | ⏳ một phần | ✅ | Master + suy luận |
 | TC-038 | `event_live_ops.type` là start / win / lose; `event_play_index` tăng theo từng event | Lỗi | ⏳ một phần | ✅ | mới (Master) |
 | TC-039 | `feature_open` / `feature_close` đi cặp, cùng `open_index`; `open_index` tăng theo từng tính năng; `duration_feature` tính bằng mili giây | Lỗi | ⏳ một phần | ✅ | mới (Master) |
 | **K. UA và mở app lần đầu** | | | | | |
@@ -204,11 +204,11 @@ Tổng: 44 case.
 | | Số case |
 |---|---|
 | Check all kiểm được ngay (chỉ cần gắn mã) | 14 |
-| Check all kiểm được một phần, phần còn lại cần Record | 18 |
-| Cần làm loại kiểm tra mới cho Check all | 11 |
+| Check all kiểm được một phần, phần còn lại cần Record | 19 |
+| Cần làm loại kiểm tra mới cho Check all | 10 |
 | Chỉ kiểm được khi Record (giá trị lúc chạy) | 1 |
 
-Case có phần **suy luận, cần chốt** (chưa bật phần đó cho tới khi được duyệt): TC-030, TC-031, TC-037.
+Phần suy luận của TC-030, TC-031, TC-037 **đã chốt bật** (08/10/2026).
 
 **Đã bao quát:** mọi event trong doc của bất kỳ game nào (kể cả event riêng như `level_daily_challenge_start`, `event_race`, `button_click`) đều được kiểm ở mức **có bắn, đủ param, đúng tên, đúng kiểu, giá trị hợp lệ** qua TC-001…TC-008 — không cần case riêng cho từng event. Các case còn lại là quy tắc về **nghĩa và hành vi** của Master (lượt chơi, quảng cáo, IAP, tài nguyên, tutorial, live ops, tính năng, UA).
 
@@ -227,6 +227,6 @@ Case có phần **suy luận, cần chốt** (chưa bật phần đó cho tới 
 ## 8. Cần chốt
 
 1. Cấu trúc 1 case (mục 2) và danh sách loại kiểm tra (mục 3) như trên được chưa?
-2. Danh sách 44 case ban đầu có cần thêm / bỏ / đổi nhóm case nào không? Riêng phần suy luận của TC-030, TC-031, TC-037: có bật không?
+2. Danh sách 44 case ban đầu có cần thêm / bỏ / đổi nhóm case nào không? (Phần suy luận của TC-030, TC-031, TC-037: đã chốt bật.)
 3. **Ai duyệt** case chung (merge PR vào package)?
 4. Mã: `TC-xxx` cho case chung, `G-xxx` cho case riêng game — ổn không?

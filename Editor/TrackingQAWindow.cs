@@ -33,9 +33,9 @@ namespace Titan.TrackingQA
         string? _acceptingKey;
         int _rendered = -1;
 
-        // Chế độ xem: 0 = Theo lỗi, 1 = Theo case (kho case TC-xxx)
+        // Chế độ xem: 0 = Theo lỗi, 1 = Theo case (kho case TC-xxx), 2 = Kịch bản (log giả lập)
         int _mode;
-        string? _selectedCase;
+        string? _selectedCase, _selectedScenario;
         readonly HashSet<string> _caseFilter = new HashSet<string> { "vio", "warn", "miss", "doc", "acc", "pass", "todo" };
 
         /// <summary>Mục đang hiện trong danh sách: <see cref="Finding"/> (Theo lỗi) hoặc <see cref="CaseResult"/> (Theo case).</summary>
@@ -44,7 +44,7 @@ namespace Titan.TrackingQA
         // Phần tử giao diện
         Label _game = null!, _doc = null!, _status = null!, _meta = null!, _coverage = null!, _log = null!;
         Button _checkBtn = null!, _cancelBtn = null!, _androidBtn = null!, _iosBtn = null!, _continueBtn = null!, _excelBtn = null!;
-        Button _modeFindings = null!, _modeCases = null!;
+        Button _modeFindings = null!, _modeCases = null!, _modeScenarios = null!;
         ToolbarSearchField _searchField = null!;
         VisualElement _summary = null!, _chips = null!, _detail = null!, _split = null!;
         Foldout _blind = null!;
@@ -126,8 +126,10 @@ namespace Titan.TrackingQA
             modeSeg.AddToClassList("mode");
             _modeFindings = new Button(() => SetMode(0)) { text = "Theo lỗi", tooltip = "Danh sách lỗi tìm được" };
             _modeCases = new Button(() => SetMode(1)) { text = "Theo case", tooltip = "Kết quả từng case của kho case (TC-xxx) trên game này" };
+            _modeScenarios = new Button(() => SetMode(2)) { text = "Kịch bản", tooltip = "Log giả lập theo kịch bản (thắng / thua / chơi lại…): lần lượt bắn gì, biến đếm nào đổi — suy từ code" };
             modeSeg.Add(_modeFindings);
             modeSeg.Add(_modeCases);
+            modeSeg.Add(_modeScenarios);
             filter.Add(modeSeg);
             _chips = Row("chips");
             filter.Add(_chips);
@@ -169,6 +171,10 @@ namespace Titan.TrackingQA
                     case CaseResult c:
                         _selectedCase = c.Id;
                         ShowCase(c);
+                        break;
+                    case ScenarioLog s:
+                        _selectedScenario = s.Id;
+                        ShowScenario(s);
                         break;
                 }
             };
@@ -272,6 +278,8 @@ namespace Titan.TrackingQA
         {
             _modeFindings.EnableInClassList("on", _mode == 0);
             _modeCases.EnableInClassList("on", _mode == 1);
+            _modeScenarios.EnableInClassList("on", _mode == 2);
+            _modeScenarios.SetEnabled(r.Scenarios.Count > 0);
             _modeCases.SetEnabled(r.Cases.Count > 0);
             _modeCases.tooltip = r.Cases.Count > 0 ? "Kết quả từng case của kho case (TC-xxx) trên game này" : "Báo cáo cũ chưa có kết quả theo case — bấm Check all lại";
             _chips.Clear();
@@ -280,6 +288,7 @@ namespace Titan.TrackingQA
             _deviceToggle.label = $"Hiện mục chỉ gặp trong Editor / cheat ({hidden})";
             _deviceToggle.style.display = _mode == 0 && hidden > 0 ? DisplayStyle.Flex : DisplayStyle.None;
 
+            if (_mode == 2) return;
             if (_mode == 1)
             {
                 foreach (var g in CaseGroups)
@@ -377,7 +386,10 @@ namespace Titan.TrackingQA
             if (r != null)
             {
                 var q = _search.Trim();
-                if (_mode == 1)
+                if (_mode == 2)
+                    _items.AddRange(r.Scenarios.Where(s => q.Length == 0 || Has(s.Label, q)
+                        || s.Runs.Any(run => Has(run.Trigger, q) || run.Items.Any(i => Has(i.Name, q)))));
+                else if (_mode == 1)
                     _items.AddRange(r.Cases
                         .Where(c => _caseFilter.Contains(CaseGroup(c.Status)))
                         .Where(c => q.Length == 0 || Has(c.Id, q) || Has(c.Title, q) || Has(c.Group, q))
@@ -391,9 +403,12 @@ namespace Titan.TrackingQA
             }
             _list.RefreshItems();
 
-            var idx = _mode == 1
-                ? (_selectedCase == null ? -1 : _items.FindIndex(o => o is CaseResult c && c.Id == _selectedCase))
-                : (_selectedKey == null ? -1 : _items.FindIndex(o => o is Finding f && f.StableKey() == _selectedKey));
+            var idx = _mode switch
+            {
+                2 => _selectedScenario == null ? -1 : _items.FindIndex(o => o is ScenarioLog s && s.Id == _selectedScenario),
+                1 => _selectedCase == null ? -1 : _items.FindIndex(o => o is CaseResult c && c.Id == _selectedCase),
+                _ => _selectedKey == null ? -1 : _items.FindIndex(o => o is Finding f && f.StableKey() == _selectedKey),
+            };
             if (idx < 0 && _items.Count > 0) idx = 0;
             if (idx < 0)
             {
@@ -403,7 +418,9 @@ namespace Titan.TrackingQA
             }
             _list.SetSelectionWithoutNotify(new[] { idx });
             _list.ScrollToItem(idx);
-            if (_items[idx] is CaseResult cr) ShowCase(cr); else ShowDetail((Finding)_items[idx]);
+            if (_items[idx] is CaseResult cr) ShowCase(cr);
+            else if (_items[idx] is ScenarioLog sl) ShowScenario(sl);
+            else ShowDetail((Finding)_items[idx]);
         }
 
         static bool Has(string? s, string q) => s != null && s.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
@@ -441,6 +458,17 @@ namespace Titan.TrackingQA
         {
             var pill = row.Q<Label>(className: "pill");
             foreach (var c in PillClasses) pill.RemoveFromClassList(c);
+            if (_items[i] is ScenarioLog sl)
+            {
+                int err = sl.Runs.Sum(x => x.Checks.Count(c => c.Level == "error")), warn = sl.Runs.Sum(x => x.Checks.Count(c => c.Level == "warn"));
+                pill.text = err > 0 ? $"{err} lỗi" : warn > 0 ? $"{warn} cần xem" : "Đúng doc";
+                pill.AddToClassList(err > 0 ? "vio" : warn > 0 ? "warn" : "pass");
+                row.Q<Label>(className: "subj").text = sl.Label;
+                row.Q<Label>(className: "fid").text = sl.Steps.Count > 1 ? "nhiều bước" : $"{sl.Runs.Count} cách làm";
+                row.Q<Label>(className: "row-title").text = sl.Runs.FirstOrDefault()?.Trigger ?? "";
+                row.tooltip = sl.Label;
+                return;
+            }
             if (_items[i] is CaseResult cr)
             {
                 pill.text = CaseEngine.StatusLabel(cr.Status);
@@ -530,6 +558,56 @@ namespace Titan.TrackingQA
             Select(_tab);
 
             if (f.DocRef != null) _detail.Add(Muted("Doc: " + f.DocRef));
+            _detailScroll.scrollOffset = Vector2.zero;
+        }
+
+        /// <summary>Log giả lập 1 kịch bản: mỗi cách làm 1 khối — các bước theo thứ tự trong code + đối chiếu doc / kho case.</summary>
+        void ShowScenario(ScenarioLog log)
+        {
+            _detail.Clear();
+            var title = Selectable(new Label("Kịch bản: " + log.Label));
+            title.AddToClassList("d-title");
+            _detail.Add(title);
+            _detail.Add(Muted("Suy từ code, không chạy game: khi người chơi làm hành động này thì lần lượt bắn gì, biến đếm nào đổi. Giá trị phụ thuộc lúc chạy ghi theo biểu thức trong code; có nhánh thì ghi điều kiện. Bấm vị trí để mở code."));
+            foreach (var run in log.Runs.Take(8))
+            {
+                var box = new VisualElement();
+                box.AddToClassList("trace");
+                box.Add(Para("<b>Thao tác:</b> " + run.Trigger));
+                int n = 1;
+                foreach (var it in run.Items)
+                {
+                    if (it.Kind == "step")
+                    {
+                        box.Add(Section("── " + it.Name + ": " + string.Join("", it.Values)));
+                        continue;
+                    }
+                    var line = Row("sc-item");
+                    var num = new Label((n++).ToString());
+                    num.AddToClassList("hop-n");
+                    line.Add(num);
+                    line.Add(Tag(it.Kind switch { "event" => "event", "property" => "property", _ => "biến đếm" }, it.Kind == "counter" ? "" : "case"));
+                    var col = new VisualElement();
+                    col.AddToClassList("hop-col");
+                    var name = new Label($"<b>{it.Name}</b>{(it.InDoc ? "" : "  <i>(ngoài doc)</i>")}");
+                    col.Add(name);
+                    if (it.Values.Count > 0) col.Add(Para(string.Join(" · ", it.Values)));
+                    if (it.Condition != null) col.Add(Muted(it.Condition));
+                    if (it.Loc != null) col.Add(Link(it.Loc));
+                    line.Add(col);
+                    box.Add(line);
+                }
+                foreach (var c in run.Checks)
+                {
+                    var sym = c.Level switch { "ok" => "✔", "error" => "✘", _ => "⚠" };
+                    var refs = string.Join(", ", new[] { c.CaseId, c.FindingId }.Where(x => x != null));
+                    var p = Para($"{sym} {c.Text}{(refs.Length > 0 ? $"  <i>({refs})</i>" : "")}", "sc-check");
+                    p.AddToClassList(c.Level);
+                    box.Add(p);
+                }
+                _detail.Add(box);
+            }
+            if (log.Runs.Count > 8) _detail.Add(Muted($"… và {log.Runs.Count - 8} cách làm khác (xem báo cáo HTML / Excel)."));
             _detailScroll.scrollOffset = Vector2.zero;
         }
 

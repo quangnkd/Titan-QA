@@ -1,0 +1,12 @@
+{
+  "_comment": "Log giả lập theo kịch bản. Mỗi hành động trong actions.json (thắng, thua, chơi lại, về Home, thoát app, hồi sinh, bỏ qua level) tự thành 1 kịch bản 1 bước. Ở đây khai báo thêm kịch bản nhiều bước (ghép các hành động theo thứ tự) và biến nào được coi là biến đếm để hiện trong log.",
+  "version": 1,
+
+  "counterMembers": "(?i)(count|index|idx|level|streak|play|win|lose|fail|coin|gold|gem|diamond|live|heart|booster|powerup|revive|times|total|score|star|progress)",
+
+  "scenarios": [
+    { "id": "lose-replay-win", "label": "Thua → Chơi lại → Thắng", "steps": ["lose", "replay", "win"] },
+    { "id": "home-then-quit", "label": "Về Home giữa level → Thoát app", "steps": ["home", "quit"] },
+    { "id": "lose-revive-win", "label": "Thua → Hồi sinh → Thắng", "steps": ["lose", "revive", "win"] }
+  ]
+}

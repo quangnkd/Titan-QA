@@ -39,6 +39,7 @@ Lõi phân tích và kho kiến thức được phát triển + kiểm thử ở
 2. ✅ Thử nạp + chạy Check all trong Editor (BlossomMatch, nhánh PackageQA) — cùng kết quả với app
 3. ✅ Cửa sổ Check all đầy đủ (2 tab Lý do / Tái hiện, mở code, Đúng thiết kế, chạy tiếp điểm mù, xuất Excel)
 4. ✅ Kho case TC-xxx (`Knowledge/common/cases/`, xem `docs/kho-case.md`): mỗi lỗi ghi mã case, chế độ xem **Theo case**, case riêng game `G-xxx`
-5. Record khi chơi trong Editor
-6. Log giả lập theo kịch bản
-7. Gửi case lên kho chung (PR)
+5. ✅ Log giả lập theo kịch bản (chế độ **Kịch bản**): thắng / thua / chơi lại / về Home / thoát app / hồi sinh + kịch bản nhiều bước (`Knowledge/common/scenarios.json`)
+6. ✅ TC-035: đổi tài nguyên phải có `resource_update` · lọc lỗi chỉ gặp trong Editor / bản debug / nút cheat
+7. Record khi chơi trong Editor
+8. Gửi case lên kho chung (PR)

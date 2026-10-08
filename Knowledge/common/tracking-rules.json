@@ -47,6 +47,13 @@
     "pattern": "nếu\\s+có|if\\s+any|optional|tuỳ\\s*chọn|tùy\\s*chọn"
   },
 
+  "resourceTracking": {
+    "_comment": "TC-035: mọi chỗ code đổi tài nguyên phải có tracking tài nguyên trên cùng luồng. events: event tracking tài nguyên (gồm tên cũ); members: regex tên biến / key PlayerPrefs là SỐ DƯ tài nguyên của người chơi (loại tên kết thúc bằng Type / Used / Ads / Time / Index… — thuộc tính hoặc bộ đếm, không phải số dư) (game đặt tên khác thì ghi đè ở games/<id>/tracking-rules.json); skipMethods: regex tên hàm không tính (nạp / lưu / cheat).",
+    "events": ["resource_update", "earn_resource", "spend_resource", "buy_resource"],
+    "members": "(?i)^(?!.*(type|kind|index|idx|id|used|use|ads|time|timer|unix|cooldown|delay|speed|duration|prefab|effect|fx|anim\\w*|sound|sfx|level|pos|offset|scale|size|color|colour|state|mode|max|min|limit|cost|price|reward|bonus|unlock\\w*|config|text|ui)$)(_|m_)?(coin|coins|gold|golds|gem|gems|diamond|diamonds|cash|money|heart|hearts|live|lives|booster\\w*|powerup\\w*|power_up\\w*|hint|hints|undo\\w*|shuffle\\w*|magnet\\w*|hammer\\w*|rocket\\w*|bomb\\w*|ticket|tickets)(count|amount|number|num)?$",
+    "skipMethods": "^(Load|Init|Initialize|Deserialize|FromJson|Restore|Save|Sync|Cheat|Debug)"
+  },
+
   "trackingLikeCall": {
     "_comment": "Lời gọi có tên kiểu này mà không xác định được hàm đích (thường do thiếu DLL) → ghi là điểm mù.",
     "pattern": "^(Track|Log|Send|Report|Fire|Analytic|Firebase)"

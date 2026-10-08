@@ -1,7 +1,7 @@
 {
   "id": "TC-030",
   "group": "G. Quảng cáo",
-  "title": "ads_show chỉ bắn cho inter / rewarded; ads_complete.end_type (quit / done) chỉ cho rewarded. Thứ tự ads_show → ad_impression_* → ads_complete là suy luận, cần chốt",
+  "title": "ads_show chỉ bắn cho inter / rewarded; ads_complete.end_type (quit / done) chỉ cho rewarded. Thứ tự ads_show → ad_impression_* → ads_complete (suy luận, đã chốt 08/10/2026)",
   "category": "Lỗi",
   "appliesWhen": {
     "doc": [
@@ -14,7 +14,7 @@
   },
   "staticCheck": "partial",
   "runtimeCheck": "yes",
-  "basis": "mixed",
-  "source": "Master + suy luận",
+  "basis": "doc",
+  "source": "Master + suy luận đã chốt 08/10/2026",
   "status": "active"
 }
