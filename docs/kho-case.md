@@ -130,7 +130,7 @@ Cửa sổ Tracking QA sẽ có thêm tab **Theo case**: mỗi case 1 dòng vớ
 | Mức | Nằm ở | Dùng khi | Có hiệu lực |
 |---|---|---|---|
 | **Riêng game** (`G-xxx`) | `games/<bundle id>/cases/` | Lỗi đặc thù của game (tính năng riêng, nút riêng) | Ngay trên máy; gửi lên kho chung qua PR khi muốn cả team dùng |
-| **Chung** (`TC-xxx`) | `common/cases/` | Quy tắc đúng với mọi game Titan | Sau khi: chạy trên **bộ game chuẩn** không báo nhầm + có game mẫu bắt được lỗi + **người duyệt merge PR** |
+| **Chung** (`TC-xxx`) | `common/cases/` | Quy tắc đúng với mọi game Titan | Sau khi: chạy trên **bộ game chuẩn** không báo nhầm + có game mẫu bắt được lỗi + **người duyệt merge PR** (QA phụ trách package; Claude chuẩn bị và review trước) |
 
 - Case riêng game có thể nâng lên case chung, khi đó case chung ghi lại nguồn (`từ G-001 của Bloom Tile`).
 - Mã case không đổi, không dùng lại. Case không dùng nữa thì để `retired`, không xoá, để báo cáo cũ vẫn tra được.
@@ -226,7 +226,7 @@ Phần suy luận của TC-030, TC-031, TC-037 **đã chốt bật** (08/10/2026
 
 ## 8. Cần chốt
 
-1. Cấu trúc 1 case (mục 2) và danh sách loại kiểm tra (mục 3) như trên được chưa?
+1. Cấu trúc 1 case (mục 2) và danh sách loại kiểm tra (mục 3): **đang theo dõi thêm** (08/10/2026) — dùng thử trên các game, chỉnh dần theo tiêu chí phủ nhiều nhất, đúng nhất, hợp lý nhất; chưa đóng băng.
 2. Danh sách 44 case ban đầu có cần thêm / bỏ / đổi nhóm case nào không? (Phần suy luận của TC-030, TC-031, TC-037: đã chốt bật.)
-3. **Ai duyệt** case chung (merge PR vào package)?
+3. ~~Ai duyệt case chung (merge PR vào package)?~~ **Đã chốt 08/10/2026**: QA phụ trách package (Dang Quang) duyệt và merge; Claude soạn case, chạy thử trên bộ game chuẩn và review PR trước khi gửi duyệt.
 4. ~~Mã: `TC-xxx` cho case chung, `G-xxx` cho case riêng game — ổn không?~~ **Đã chốt 08/10/2026**: `TC-xxx` cho case chung, `G-xxx` cho case riêng game.
