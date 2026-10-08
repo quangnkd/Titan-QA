@@ -18,7 +18,7 @@ Mở menu **Titan → Tracking QA**, chọn file tracking (Excel), bấm **Check
 - Bấm vị trí `File.cs:123` để mở đúng dòng trong IDE; prefab / scene thì được chọn trong Project.
 - **Đúng thiết kế…**: đánh dấu ngoại lệ riêng của game (ghi lý do) — lần sau không tính là lỗi; xem lại / bỏ ở bộ lọc "Đã chấp nhận".
 - **Chạy tiếp điểm mù**: phân tích tiếp từ chỗ bị dừng do giới hạn (không chạy lại từ đầu).
-- **Xuất Excel…** / **Mở báo cáo HTML** để gửi người khác.
+- **Mở báo cáo HTML** để gửi người khác.
 
 Báo cáo gần nhất lưu ở `Library/TrackingQA/last-report.json` (mở lại Unity vẫn xem được); chỉnh sửa trên máy (ngoại lệ, chỉnh doc) ở `UserSettings/TrackingQA/` — không vào git của game.
 
@@ -37,7 +37,7 @@ Lõi phân tích và kho kiến thức được phát triển + kiểm thử ở
 
 1. ✅ Lõi build được cho Unity (netstandard2.1)
 2. ✅ Thử nạp + chạy Check all trong Editor (BlossomMatch, nhánh PackageQA) — cùng kết quả với app
-3. ✅ Cửa sổ Check all đầy đủ (2 tab Lý do / Tái hiện, mở code, Đúng thiết kế, chạy tiếp điểm mù, xuất Excel)
+3. ✅ Cửa sổ Check all đầy đủ (2 tab Lý do / Tái hiện, mở code, Đúng thiết kế, chạy tiếp điểm mù, báo cáo HTML)
 4. ✅ Kho case TC-xxx (`Knowledge/common/cases/`, xem `docs/kho-case.md`): mỗi lỗi ghi mã case, chế độ xem **Theo case**, case riêng game `G-xxx`
 5. ✅ Log giả lập theo kịch bản (chế độ **Kịch bản**): thắng / thua / chơi lại / về Home / thoát app / hồi sinh + kịch bản nhiều bước (`Knowledge/common/scenarios.json`)
 6. ✅ TC-035: đổi tài nguyên phải có `resource_update` · lọc lỗi chỉ gặp trong Editor / bản debug / nút cheat

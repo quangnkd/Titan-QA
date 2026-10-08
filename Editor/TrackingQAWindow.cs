@@ -43,7 +43,7 @@ namespace Titan.TrackingQA
 
         // Phần tử giao diện
         Label _game = null!, _doc = null!, _status = null!, _meta = null!, _coverage = null!, _log = null!;
-        Button _checkBtn = null!, _cancelBtn = null!, _androidBtn = null!, _iosBtn = null!, _continueBtn = null!, _excelBtn = null!;
+        Button _checkBtn = null!, _cancelBtn = null!, _androidBtn = null!, _iosBtn = null!, _continueBtn = null!;
         Button _modeFindings = null!, _modeCases = null!, _modeScenarios = null!;
         ToolbarSearchField _searchField = null!;
         VisualElement _summary = null!, _chips = null!, _detail = null!, _split = null!;
@@ -112,8 +112,6 @@ namespace Titan.TrackingQA
             };
             covRow.Add(_continueBtn);
             covRow.Add(new VisualElement { style = { flexGrow = 1 } });
-            _excelBtn = new Button(ExportExcel) { text = "Xuất Excel…" };
-            covRow.Add(_excelBtn);
             covRow.Add(new Button(OpenHtml) { text = "Mở báo cáo HTML", tooltip = "Báo cáo đầy đủ (kèm bảng từng event) để gửi người khác" });
             _summary.Add(covRow);
             _blind = new Foldout { value = false };
@@ -239,7 +237,6 @@ namespace Titan.TrackingQA
             _continueBtn.style.display = QaRunner.CanContinue ? DisplayStyle.Flex : DisplayStyle.None;
             _continueBtn.text = $"Chạy tiếp điểm mù ({r.Coverage.Truncated})";
             _continueBtn.SetEnabled(!running);
-            _excelBtn.SetEnabled(!running);
 
             // Nhật ký cập nhật liên tục khi đang chạy → chỉ vẽ lại danh sách / chi tiết khi báo cáo thật sự đổi
             if (_rendered == QaRunner.Version) return;
@@ -607,7 +604,7 @@ namespace Titan.TrackingQA
                 }
                 _detail.Add(box);
             }
-            if (log.Runs.Count > 8) _detail.Add(Muted($"… và {log.Runs.Count - 8} cách làm khác (xem báo cáo HTML / Excel)."));
+            if (log.Runs.Count > 8) _detail.Add(Muted($"… và {log.Runs.Count - 8} cách làm khác (xem báo cáo HTML)."));
             _detailScroll.scrollOffset = Vector2.zero;
         }
 
@@ -876,21 +873,6 @@ namespace Titan.TrackingQA
             if (string.IsNullOrEmpty(p)) return;
             QaRunner.DocPath = p.Replace('/', Path.DirectorySeparatorChar);
             Refresh();
-        }
-
-        static void ExportExcel()
-        {
-            var r = QaRunner.Report;
-            if (r == null) return;
-            var name = $"Tracking check - {r.Game} - {r.CreatedAt:yyyyMMdd-HHmm}.xlsx";
-            var p = EditorUtility.SaveFilePanel("Xuất báo cáo Excel", "", name, "xlsx");
-            if (string.IsNullOrEmpty(p)) return;
-            try
-            {
-                QaRunner.WriteExcel(p);
-                EditorUtility.RevealInFinder(p);
-            }
-            catch (Exception e) { EditorUtility.DisplayDialog("Tracking QA", "Không xuất được Excel: " + e.Message, "OK"); }
         }
 
         static void OpenHtml()

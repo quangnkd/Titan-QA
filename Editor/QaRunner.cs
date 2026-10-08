@@ -220,10 +220,6 @@ namespace Titan.TrackingQA
             return p;
         }
 
-        public static void WriteExcel(string path)
-        {
-            if (Report != null) ExcelReport.Write(Report, path);
-        }
     }
 
     /// <summary>
@@ -271,15 +267,14 @@ namespace Titan.TrackingQA
             QaRunner.CheckAll(lines[0].Trim(), platform);
         }
 
-        /// <summary>Xuất thử HTML + Excel (kiểm tra ghi file chạy được trong Unity).</summary>
+        /// <summary>Xuất thử HTML (kiểm tra ghi file chạy được trong Unity).</summary>
         static string TryExport()
         {
             try
             {
                 if (QaRunner.Report == null) return "không có báo cáo";
                 QaRunner.WriteHtml();
-                QaRunner.WriteExcel(Path.Combine(QaRunner.WorkDir, "report.xlsx"));
-                return "report.html + report.xlsx OK";
+                return "report.html OK";
             }
             catch (Exception e) { return "LỖI " + e; }
         }
