@@ -1,0 +1,20 @@
+{
+  "id": "TC-001",
+  "group": "A. So với doc",
+  "title": "Event trong doc phải có trong code, đúng tên",
+  "why": "Event không được bắn → cả bảng số liệu của event đó trống.",
+  "category": "Thiếu (gần giống tên → Lỗi)",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_event"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "event_missing",
+    "event_name_typo"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

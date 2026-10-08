@@ -1,0 +1,21 @@
+{
+  "id": "TC-026",
+  "group": "F. Lượt chơi (bổ sung)",
+  "title": "duration tính từ lúc thực sự chơi (move đầu), không tính lúc chờ, xem quảng cáo, app ở nền; percent_complete trong 0–100",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "docParamName": [
+      "duration",
+      "percent_complete"
+    ]
+  },
+  "check": {
+    "kind": "runtime_value"
+  },
+  "staticCheck": "no",
+  "runtimeCheck": "yes",
+  "example": "Đứng yên 5s rồi chơi 3s → duration = 3",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

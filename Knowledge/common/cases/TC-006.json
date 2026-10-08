@@ -1,0 +1,18 @@
+{
+  "id": "TC-006",
+  "group": "A. So với doc",
+  "title": "Mỗi giá trị doc định nghĩa phải có ít nhất 1 nhánh bắn",
+  "category": "Thiếu (chưa làm nhánh đó); hành động đó đang bắn giá trị khác → Lỗi (TC-007)",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_value"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "no",
+  "fromRules": [
+    "value_never_sent"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

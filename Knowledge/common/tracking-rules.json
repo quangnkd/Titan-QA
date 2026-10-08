@@ -1,0 +1,54 @@
+{
+  "_comment": "Quy ước tracking của studio + giới hạn Firebase — dùng chung cho mọi game. Sửa / thêm ở đây, không cần sửa code. Bản ghi đè (không cần build lại): đặt file cùng tên vào thư mục knowledge của app (%APPDATA%\\TrackingChecker\\knowledge) hoặc của package.",
+  "version": 1,
+
+  "renames": {
+    "_comment": "Tên cũ trong doc → tên chuẩn hiện tại (theo Master plan / package Titan). Doc ghi tên cũ mà code dùng tên mới → Lỗi doc, không phải Thiếu.",
+    "buy_resource": ["resource_update", "view_item"],
+    "earn_resource": ["resource_update", "view_item"],
+    "spend_resource": ["resource_update", "view_item"],
+    "max_level": ["level_unlock"],
+    "iaa_count": ["reward_count"],
+    "rewarded_ad_count": ["reward_count"],
+    "inter_ad_count": ["inter_count"],
+    "remaining_coin": ["coin"],
+    "remaining_booster": ["booster_1", "booster_2", "booster_3"],
+    "remaining_item": ["booster_1", "booster_2", "booster_3"],
+    "remaining_live": ["lives"],
+    "product_id": ["product"],
+    "ads_intertistial": ["ads_inter"],
+    "adjust_data": ["appsflyer_data"],
+    "adjust_id": ["appsflyer_id"],
+    "appsflyer_data": ["adjust_data"],
+    "appsflyer_id": ["adjust_id"]
+  },
+
+  "propertyAfterEvent": [
+    { "_comment": "User property phải set SAU event tương ứng (theo Master).",
+      "property": "^(coin|lives|lives_infinity|booster_\\d+)$", "events": ["resource_update", "view_item", "earn_resource", "spend_resource", "buy_resource"], "rule": "update ngay sau event resource_update" },
+    { "property": "^iap_count$", "events": ["Purchase_Success"], "rule": "update ngay sau event Purchase_Success" },
+    { "property": "^(reward_count|rewarded_ad_count)$", "events": ["ad_impression_rewarded", "ads_reward"], "rule": "update ngay sau event ad_impression_rewarded" },
+    { "property": "^(inter_count|inter_ad_count)$", "events": ["ad_impression_inter", "ads_inter"], "rule": "update ngay sau event ad_impression_inter" }
+  ],
+
+  "firebaseLimits": {
+    "_comment": "Giới hạn của Firebase Analytics — vượt thì Firebase cắt hoặc bỏ.",
+    "eventNameLength": 40,
+    "paramNameLength": 40,
+    "paramCount": 25,
+    "stringValueLength": 100,
+    "propertyNameLength": 24,
+    "propertyValueLength": 36,
+    "reservedPrefixes": ["firebase_", "google_", "ga_"]
+  },
+
+  "optionalMarkers": {
+    "_comment": "Mô tả param / property có các cụm này → tuỳ chọn: game không có tính năng đó thì không bắt buộc (regex, không phân biệt hoa thường).",
+    "pattern": "nếu\\s+có|if\\s+any|optional|tuỳ\\s*chọn|tùy\\s*chọn"
+  },
+
+  "trackingLikeCall": {
+    "_comment": "Lời gọi có tên kiểu này mà không xác định được hàm đích (thường do thiếu DLL) → ghi là điểm mù.",
+    "pattern": "^(Track|Log|Send|Report|Fire|Analytic|Firebase)"
+  }
+}

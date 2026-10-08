@@ -1,0 +1,20 @@
+{
+  "id": "TC-022",
+  "group": "E. Doc",
+  "title": "Doc không liệt kê nhiều booster hơn game có (báo team data sửa doc, không đánh lỗi game)",
+  "category": "Lỗi doc",
+  "appliesWhen": {
+    "docBoosters": true
+  },
+  "check": {
+    "kind": "doc_naming"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "no",
+  "fromRules": [
+    "doc_more_boosters"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

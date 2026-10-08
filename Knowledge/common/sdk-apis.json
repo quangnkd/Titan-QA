@@ -1,0 +1,25 @@
+{
+  "_comment": "Các API mà tracking đi qua để lên Firebase. 'shape' là cách đọc lời gọi: event (tên = tham số 0, param = tham số 1 dạng danh sách), items (như event, items[] không đọc chi tiết), template (tên event cố định, mỗi tham số int/string của hàm là 1 param cùng tên; 'rename' đổi tên param), resourceUpdate (Titan TrackResourceUpdate → resource_update + view_item), constProperty (set user property cố định), property (tên = tham số 0, giá trị = tham số 1), firebaseEvent (FirebaseAnalytics.LogEvent các dạng). 'ignoreFrom': lời gọi từ bên trong các lớp này không tính (lớp chuyển tiếp của package). 'onlyFrom': chỉ tính khi gọi từ bên trong lớp này. Thêm SDK / API mới cùng dạng: chỉ cần thêm dòng ở đây.",
+  "version": 1,
+  "apis": [
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackEvent", "shape": "event", "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackProperty", "shape": "property", "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackItems", "shape": "items", "renameEvent": { "resource_update": "view_item" }, "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackResourceUpdate", "shape": "resourceUpdate", "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "InitGetLevelUnlock", "shape": "constProperty", "property": "level_unlock", "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "InitGetLevelUnlockByPlayerPrefs", "shape": "constProperty", "property": "level_unlock", "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackLevelStart", "shape": "template", "event": "level_start", "rename": { "level": "level_id" }, "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackLevelPlay", "shape": "template", "event": "level_play", "rename": { "level": "level_id" }, "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackLevelEnd", "shape": "template", "event": "level_end", "rename": { "level": "level_id" }, "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackLevelExit", "shape": "template", "event": "level_exit", "rename": { "level": "level_id" }, "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackTutorial", "shape": "template", "event": "tutorial", "rename": { "level": "level_id" }, "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Tracking.TrackingManager", "method": "TrackEventLiveOps", "shape": "template", "event": "event_live_ops", "rename": { "level": "level_id" }, "ignoreFrom": ["Titan.Tracking.TrackingManager"] },
+    { "type": "Titan.Firebase_Analytic.FirebaseAnalytic", "method": "TrackProperty", "shape": "property", "onlyFrom": "Titan.Firebase_Analytic.FirebaseAnalytic", "ignoreContainers": ["RegisterService"] },
+    { "type": "Firebase.Analytics.FirebaseAnalytics", "method": "LogEvent", "shape": "firebaseEvent", "ignoreFrom": ["Titan.Firebase_Analytic.FirebaseAnalytic"] },
+    { "type": "Firebase.Analytics.FirebaseAnalytics", "method": "SetUserProperty", "shape": "property", "ignoreFrom": ["Titan.Firebase_Analytic.FirebaseAnalytic"] }
+  ],
+  "autoParams": [
+    { "_comment": "Titan tự thêm fps cho event có tên chứa 'level' / 'lv_' — chỉ trên máy thật (#if !UNITY_EDITOR), trong Editor không có.",
+      "param": "fps", "type": "string", "eventNameContains": ["level", "lv_"], "appliesTo": ["Titan.Tracking.TrackingManager"], "deviceOnly": true }
+  ]
+}

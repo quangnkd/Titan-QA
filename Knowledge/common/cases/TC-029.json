@@ -1,0 +1,17 @@
+{
+  "id": "TC-029",
+  "group": "F. Lượt chơi (bổ sung)",
+  "title": "Chế độ chơi phụ có cặp start / end (level_daily_challenge_*, level_adventure_*, challenge_*…) theo cùng quy tắc lượt chơi: đúng 1 end mỗi start, có end khi thoát giữa chừng",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "docEventPair": true
+  },
+  "check": {
+    "kind": "once_per_play"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Doc các game",
+  "status": "active"
+}

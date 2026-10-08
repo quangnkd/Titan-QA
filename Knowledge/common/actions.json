@@ -1,0 +1,20 @@
+{
+  "_comment": "Từ điển hành động của người chơi. 'doc': cụm từ trong mô tả giá trị của doc (so khớp không dấu, không phân biệt hoa thường). 'code': từ trong tên nút / tên hàm (so khớp theo từng từ camelCase, vd 'GameOver' khớp 'OnGameOverShow' nhưng 'Lose' không khớp 'Close'). Dùng để kiểm: giá trị doc định nghĩa cho hành động X có đúng là giá trị code bắn khi người chơi làm X không.",
+  "version": 1,
+  "actions": [
+    { "id": "win",    "label": "Thắng level",       "doc": ["thang", "win", "victory", "hoan thanh", "qua man", "complete"],
+      "code": ["Win", "Victory", "LevelComplete", "LevelCompleted", "CompleteLevel", "LevelClear", "WellDone"] },
+    { "id": "lose",   "label": "Thua level",        "doc": ["thua", "lose", "fail", "that bai", "game over"],
+      "code": ["Lose", "Lost", "LevelFail", "LevelFailed", "FailLevel", "GameOver", "Defeat", "OutOfSpace", "OutOfMove", "OutOfMoves"] },
+    { "id": "replay", "label": "Chơi lại",          "doc": ["replay", "choi lai", "restart", "retry", "an lai"],
+      "code": ["Replay", "Restart", "Retry", "PlayAgain"] },
+    { "id": "home",   "label": "Về màn Home",       "doc": ["home", "ve man chinh", "main menu", "ve sanh"],
+      "code": ["Home", "BackToMenu", "MainMenu", "GoHome", "BackHome"] },
+    { "id": "quit",   "label": "Thoát app đột ngột", "doc": ["thoat game dot ngot", "thoat dot ngot", "kill app", "tat app", "quit"],
+      "code": ["OnApplicationQuit", "OnApplicationPause", "Quit"] },
+    { "id": "revive", "label": "Hồi sinh",          "doc": ["revive", "hoi sinh", "second chance"],
+      "code": ["Revive", "SecondChance"] },
+    { "id": "skip",   "label": "Bỏ qua level",      "doc": ["skip", "bo qua"],
+      "code": ["SkipLevel"] }
+  ]
+}

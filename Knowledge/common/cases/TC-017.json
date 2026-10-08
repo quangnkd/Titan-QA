@@ -1,0 +1,24 @@
+{
+  "id": "TC-017",
+  "group": "C. Giới hạn Firebase",
+  "title": "Tên event ≤ 40, tên param ≤ 40, giá trị ≤ 100, tên property ≤ 24, giá trị property ≤ 36 ký tự; không dùng tiền tố firebase_, google_, ga_",
+  "why": "Vượt giới hạn → Firebase cắt hoặc bỏ dữ liệu, không báo lỗi.",
+  "category": "Lỗi",
+  "appliesWhen": {},
+  "check": {
+    "kind": "firebase_limits"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "fb_event_name_len",
+    "fb_param_name_len",
+    "fb_value_len",
+    "fb_prop_name_len",
+    "fb_prop_value_len",
+    "fb_reserved"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc; giới hạn Firebase",
+  "status": "active"
+}

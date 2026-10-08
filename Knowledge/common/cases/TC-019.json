@@ -1,0 +1,26 @@
+{
+  "id": "TC-019",
+  "group": "D. Package Titan / SDK",
+  "title": "Event quảng cáo mà doc yêu cầu ad_placement thì phải có giá trị có nghĩa (không rỗng / \"null\"). Banner: theo doc từng game (Master ghi chưa implement → Doc chưa rõ)",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "docParamName": "ad_placement"
+  },
+  "check": {
+    "kind": "param_required_when",
+    "param": "ad_placement"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "param_missing"
+  ],
+  "match": [
+    {
+      "param": "ad_placement"
+    }
+  ],
+  "basis": "doc",
+  "source": "SKILL #5",
+  "status": "active"
+}

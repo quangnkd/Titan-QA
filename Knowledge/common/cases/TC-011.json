@@ -1,0 +1,45 @@
+{
+  "id": "TC-011",
+  "group": "B. Luồng chơi",
+  "title": "Kill app / thoát giữa level → lần mở sau phải có level_end win=2",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "level_end.win"
+  },
+  "check": {
+    "kind": "on_action_must_fire",
+    "action": "quit",
+    "event": "level_end",
+    "param": "win"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "value_never_sent",
+    "dead_flag"
+  ],
+  "match": [
+    {
+      "rule": "value_never_sent",
+      "subject": "level_end",
+      "param": "win",
+      "titlePattern": "(?i)thoát|kill|đột ngột|quit"
+    },
+    {
+      "rule": "dead_flag",
+      "textPattern": "(?i)level_end|win\\s*=\\s*2|playing|in_?game|in_?level|pending|quit|thoát|kill"
+    }
+  ],
+  "preconditions": [
+    "Level chưa kết thúc"
+  ],
+  "repro": [
+    "Vào level, chơi vài nước",
+    "Kill app (vuốt tắt)",
+    "Mở lại game"
+  ],
+  "example": "Mở lại game phải thấy level_end win=2 trước level_start mới",
+  "basis": "doc",
+  "source": "Master; SKILL mục 3 (level_end khi thoát giữa level)",
+  "status": "active"
+}

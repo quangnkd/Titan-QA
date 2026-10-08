@@ -1,0 +1,22 @@
+{
+  "id": "TC-040",
+  "group": "K. UA và mở app lần đầu",
+  "title": "Property UA (network / campaign / adgroup / creative) luôn có giá trị theo quy tắc Unattributed / Unavailable / Organic; ≤ 36 ký tự; creative bỏ campaign_id ở đầu",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "network",
+      "campaign",
+      "adgroup",
+      "creative"
+    ]
+  },
+  "check": {
+    "kind": "custom"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "SKILL mục 3, Master",
+  "status": "active"
+}

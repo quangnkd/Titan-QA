@@ -1,0 +1,17 @@
+{
+  "id": "TC-032",
+  "group": "G. Quảng cáo",
+  "title": "ad_impression_banner cộng gộp, bắn khi kết thúc level / session, count = tổng impression",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "ad_impression_banner"
+  },
+  "check": {
+    "kind": "sequence"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

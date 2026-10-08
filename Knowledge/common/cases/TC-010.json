@@ -1,0 +1,25 @@
+{
+  "id": "TC-010",
+  "group": "B. Luồng chơi",
+  "title": "Mỗi lượt chơi có đúng 1 level_start và 1 level_end — không thừa, không thiếu ở nhánh nào (thắng, thua, replay, home, thoát)",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "level_end"
+  },
+  "check": {
+    "kind": "once_per_play",
+    "events": [
+      "level_start",
+      "level_end"
+    ]
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "flow_double_level_end"
+  ],
+  "example": "Thua → bấm Home ở popup mất streak: chỉ được 1 level_end (lỗi hay gặp: 2 level_end)",
+  "basis": "doc",
+  "source": "Luật gốc; Master; SKILL #1",
+  "status": "active"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "TC-023",
+  "group": "E. Doc",
+  "title": "Event / param / property có trong code thì phải có trong doc",
+  "category": "Ngoài plan",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_event"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "event_out_of_plan",
+    "param_out_of_plan",
+    "prop_out_of_plan",
+    "event_removed_in_doc"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

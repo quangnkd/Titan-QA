@@ -1,0 +1,17 @@
+{
+    "name": "Titan.TrackingQA.Editor",
+    "rootNamespace": "Titan.TrackingQA",
+    "references": [],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "TrackingChecker.Core.dll",
+        "System.Text.Json.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

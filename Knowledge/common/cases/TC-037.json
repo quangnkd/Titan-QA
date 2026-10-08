@@ -1,0 +1,17 @@
+{
+  "id": "TC-037",
+  "group": "J. Tutorial, live ops, tính năng",
+  "title": "tutorial.step_name theo mẫu trong doc của game (Master ví dụ step_N_start / step_N_complete), đúng thứ tự. \"Mỗi bước 1 lần, không lặp khi chơi lại\" là suy luận, cần chốt",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "tutorial"
+  },
+  "check": {
+    "kind": "sequence"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "mixed",
+  "source": "Master + suy luận",
+  "status": "active"
+}

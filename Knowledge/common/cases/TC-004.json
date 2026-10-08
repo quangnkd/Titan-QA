@@ -1,0 +1,19 @@
+{
+  "id": "TC-004",
+  "group": "A. So với doc",
+  "title": "Kiểu param đúng doc (int / string / float)",
+  "why": "Gửi sai kiểu → Firebase lưu sang cột khác (int_value / string_value), query rỗng.",
+  "category": "Lỗi",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_param"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "param_type"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

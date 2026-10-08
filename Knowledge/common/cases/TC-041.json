@@ -1,0 +1,22 @@
+{
+  "id": "TC-041",
+  "group": "K. UA và mở app lần đầu",
+  "title": "adjust_id / user_id set ngay lần mở đầu; adjust_data / appsflyer_data bắn lần mở đầu và cập nhật tới khi có giá trị dùng được",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "adjust_id",
+      "user_id",
+      "adjust_data",
+      "appsflyer_data"
+    ]
+  },
+  "check": {
+    "kind": "custom"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

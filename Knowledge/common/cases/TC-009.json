@@ -1,0 +1,19 @@
+{
+  "id": "TC-009",
+  "group": "A. So với doc",
+  "title": "User property set ngay sau event tương ứng (coin / lives / lives_infinity / booster sau resource_update; iap_count sau Purchase_Success; reward_count, inter_count sau ad_impression_*)",
+  "why": "Property set trước event → event mang số dư cũ, phân tích số dư theo event sai.",
+  "category": "Nghi ngờ (Check all) / Lỗi (Record thấy thật)",
+  "appliesWhen": {},
+  "check": {
+    "kind": "property_after_event"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "flow_property_before_event"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

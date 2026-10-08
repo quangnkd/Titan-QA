@@ -1,0 +1,18 @@
+{
+  "id": "TC-013",
+  "group": "B. Luồng chơi",
+  "title": "Không bắn level_exit khi quảng cáo toàn màn hình làm app pause",
+  "why": "Master: chỉ cần level_exit nếu không log được level_end win=2; quảng cáo không phải người chơi rời game.",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "level_exit"
+  },
+  "check": {
+    "kind": "custom"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "SKILL #4",
+  "status": "active"
+}

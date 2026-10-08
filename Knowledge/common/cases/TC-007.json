@@ -1,0 +1,23 @@
+{
+  "id": "TC-007",
+  "group": "A. So với doc",
+  "title": "Hành động người chơi → đúng giá trị doc định nghĩa cho hành động đó",
+  "why": "Ví dụ doc định nghĩa win=3 là 'ấn replay' mà code gửi 2 → mọi số liệu replay / thoát đều sai.",
+  "category": "Lỗi",
+  "appliesWhen": {},
+  "check": {
+    "kind": "value_for_action"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "value_action_mismatch"
+  ],
+  "repro": [
+    "Làm hành động X (thắng / thua / chơi lại / về Home / thoát app…)",
+    "Xem giá trị param của event"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

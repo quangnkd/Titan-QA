@@ -1,0 +1,24 @@
+{
+  "id": "TC-015",
+  "group": "B. Luồng chơi",
+  "title": "play_index = lần thứ mấy chơi level đó: tăng 1 mỗi level_start, giống nhau ở mọi event cùng lượt",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "level_start.play_index",
+      "level_end.play_index"
+    ]
+  },
+  "check": {
+    "kind": "counter"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "preconditions": [
+    "Level chưa chơi lần nào"
+  ],
+  "example": "Chơi lần 1 → play_index = 1; chơi lại → 2",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

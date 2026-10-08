@@ -1,0 +1,19 @@
+{
+  "id": "TC-018",
+  "group": "C. Giới hạn Firebase",
+  "title": "Tối đa 25 param mỗi event (tính cả fps Titan tự thêm), kể cả param dựng trong vòng lặp",
+  "category": "Lỗi / Nghi ngờ",
+  "appliesWhen": {},
+  "check": {
+    "kind": "firebase_limits"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "fb_param_count",
+    "fb_param_count_loop"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc; SKILL #8",
+  "status": "active"
+}

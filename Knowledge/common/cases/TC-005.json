@@ -1,0 +1,19 @@
+{
+  "id": "TC-005",
+  "group": "A. So với doc",
+  "title": "Giá trị gửi phải thuộc tập giá trị doc",
+  "category": "Lỗi",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_value"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "value_not_in_doc"
+  ],
+  "example": "ads_show.status gửi \"not_ready\" / \"no_ad_unit\" thay vì \"success\" / \"fail by …\" (SKILL #7)",
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "TC-025",
+  "group": "F. Lượt chơi (bổ sung)",
+  "title": "Số đếm trong lượt (revive, booster_N đã dùng, exit_index) chỉ đếm trong lượt đó, reset khi bắt đầu lượt mới",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "docParamName": [
+      "revive",
+      "exit_index",
+      "booster_1"
+    ]
+  },
+  "check": {
+    "kind": "counter"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

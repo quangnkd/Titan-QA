@@ -1,0 +1,21 @@
+{
+  "id": "TC-044",
+  "group": "L. Chung",
+  "title": "Game không tự bắn lại event mà package Titan đã tự bắn (vd Purchase_Success của com.titan.iap, level_unlock) → tránh đếm 2 lần",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "Purchase_Success",
+      "level_unlock",
+      "ad_impression"
+    ]
+  },
+  "check": {
+    "kind": "no_duplicate_with_package"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Kinh nghiệm review",
+  "status": "active"
+}

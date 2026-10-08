@@ -1,0 +1,15 @@
+{
+  "id": "TC-043",
+  "group": "L. Chung",
+  "title": "Giá trị thoả cột \"Value Requirement\" của doc (>= 0, > 0…)",
+  "category": "Lỗi",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_value"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

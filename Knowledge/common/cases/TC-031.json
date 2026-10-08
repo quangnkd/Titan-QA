@@ -1,0 +1,17 @@
+{
+  "id": "TC-031",
+  "group": "G. Quảng cáo",
+  "title": "Thưởng từ quảng cáo phải có resource_update type earn, source là quảng cáo. \"Chỉ thưởng khi end_type = done\" là suy luận, cần chốt",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "ads_complete"
+  },
+  "check": {
+    "kind": "sequence"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "mixed",
+  "source": "Master + suy luận",
+  "status": "active"
+}

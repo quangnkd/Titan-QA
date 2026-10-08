@@ -1,0 +1,17 @@
+{
+  "id": "TC-036",
+  "group": "I. Tài nguyên",
+  "title": "lives_infinity cập nhật khi đổi level (phần sau resource_update nằm trong TC-009)",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "lives_infinity"
+  },
+  "check": {
+    "kind": "custom"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "TC-012",
+  "group": "B. Luồng chơi",
+  "title": "level_end.level_id là level đang chơi — không tăng level trước khi bắn",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "level_end.level_id"
+  },
+  "check": {
+    "kind": "custom"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "example": "Thắng level 5 → level_end.level_id = 5 (không phải 6)",
+  "basis": "doc",
+  "source": "SKILL #3",
+  "status": "active"
+}

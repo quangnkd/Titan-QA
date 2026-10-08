@@ -1,0 +1,23 @@
+{
+  "id": "TC-035",
+  "group": "I. Tài nguyên",
+  "title": "Mọi chỗ code làm đổi coin / booster / lives đều bắn resource_update với type đúng (buy = tiền thật, earn = chơi / quảng cáo, spend = tiêu)",
+  "why": "Tài nguyên đổi mà không có resource_update → số liệu kinh tế trong game thiếu, không thấy được bằng mắt.",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "resource_update",
+      "earn_resource",
+      "spend_resource",
+      "buy_resource"
+    ]
+  },
+  "check": {
+    "kind": "resource_change_tracked"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

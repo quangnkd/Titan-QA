@@ -1,0 +1,18 @@
+{
+  "id": "TC-028",
+  "group": "F. Lượt chơi (bổ sung)",
+  "title": "level_unlock cập nhật khi user bắt đầu level mới, không phải lúc thắng level trước",
+  "why": "Package Titan tự set level_unlock từ hàm game cung cấp → kiểm hàm đó trả level nào.",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "level_unlock"
+  },
+  "check": {
+    "kind": "custom"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

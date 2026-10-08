@@ -1,0 +1,20 @@
+{
+  "id": "TC-003",
+  "group": "A. So với doc",
+  "title": "Param doc yêu cầu phải được gửi ở mọi chỗ bắn, đúng tên",
+  "why": "Firebase coi tên khác là param khác → cột của doc trống.",
+  "category": "Thiếu (không chỗ nào gửi) / Lỗi (sót ở vài chỗ, sai tên)",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_param"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "param_missing",
+    "param_name_mismatch"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

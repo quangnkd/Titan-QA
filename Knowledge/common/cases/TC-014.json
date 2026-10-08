@@ -1,0 +1,31 @@
+{
+  "id": "TC-014",
+  "group": "B. Luồng chơi",
+  "title": "level_play bắn đúng mốc theo doc (Master: 1 = move đầu, 2/5/8 ≈ 20/50/80%, 0 = stuck), mỗi type chỉ 1 lần mỗi lượt",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "level_play"
+  },
+  "check": {
+    "kind": "once_per_play",
+    "events": [
+      "level_play"
+    ],
+    "per": "type"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "value_never_sent"
+  ],
+  "match": [
+    {
+      "subject": "level_play",
+      "param": "type"
+    }
+  ],
+  "example": "Chơi hết level → type đúng [1, 2, 5, 8], mỗi giá trị 1 lần",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

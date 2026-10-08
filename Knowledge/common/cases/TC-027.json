@@ -1,0 +1,17 @@
+{
+  "id": "TC-027",
+  "group": "F. Lượt chơi (bổ sung)",
+  "title": "level_exit chỉ bắn khi rời game giữa level, không bắn sau khi đã có level_end",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "level_exit"
+  },
+  "check": {
+    "kind": "sequence"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "TC-039",
+  "group": "J. Tutorial, live ops, tính năng",
+  "title": "feature_open / feature_close đi cặp, cùng open_index; open_index tăng theo từng tính năng; duration_feature tính bằng mili giây",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "feature_open",
+      "feature_close"
+    ]
+  },
+  "check": {
+    "kind": "sequence"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

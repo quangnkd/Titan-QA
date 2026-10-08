@@ -1,0 +1,19 @@
+{
+  "id": "TC-021",
+  "group": "E. Doc",
+  "title": "Doc không dùng tên cũ (buy/earn/spend_resource, max_level, remaining_coin, iaa_count…). product thay vì product_id của com.titan.iap là lỗi package (TC-003), không phải lỗi doc",
+  "category": "Lỗi doc",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_naming"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "no",
+  "fromRules": [
+    "doc_old_name",
+    "prop_renamed"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

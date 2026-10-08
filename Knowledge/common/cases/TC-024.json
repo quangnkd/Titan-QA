@@ -1,0 +1,28 @@
+{
+  "id": "TC-024",
+  "group": "F. Lượt chơi (bổ sung)",
+  "title": "level_start bắn ở mọi đường bắt đầu (chơi mới, next sau khi thắng, restart từ setting, restart khi thua, vào lại từ Home); type đúng ngữ cảnh: 1 chơi mới, 2 restart từ setting, 3 restart khi thua",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "level_start.type"
+  },
+  "check": {
+    "kind": "on_action_must_fire",
+    "event": "level_start",
+    "param": "type"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "value_action_mismatch",
+    "value_never_sent"
+  ],
+  "match": [
+    {
+      "subject": "level_start"
+    }
+  ],
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

@@ -1,0 +1,20 @@
+{
+  "id": "TC-030",
+  "group": "G. Quảng cáo",
+  "title": "ads_show chỉ bắn cho inter / rewarded; ads_complete.end_type (quit / done) chỉ cho rewarded. Thứ tự ads_show → ad_impression_* → ads_complete là suy luận, cần chốt",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "ads_show",
+      "ads_complete"
+    ]
+  },
+  "check": {
+    "kind": "sequence"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "mixed",
+  "source": "Master + suy luận",
+  "status": "active"
+}

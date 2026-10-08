@@ -1,0 +1,17 @@
+{
+  "id": "TC-034",
+  "group": "H. IAP",
+  "title": "Purchase_Success.iap_index tăng 1 mỗi lần mua; gói có tài nguyên thì mua xong phải có resource_update type buy, source = tên gói (gói không có tài nguyên → không áp dụng)",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "Purchase_Success"
+  },
+  "check": {
+    "kind": "counter"
+  },
+  "staticCheck": "planned",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

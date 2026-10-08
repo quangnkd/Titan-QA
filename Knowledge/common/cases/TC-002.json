@@ -1,0 +1,22 @@
+{
+  "id": "TC-002",
+  "group": "A. So với doc",
+  "title": "Event phải bắn từ luồng chạy thật — không chỉ trong code không ai gọi, sau cờ không bao giờ set, hay chỉ từ nút cheat/debug",
+  "why": "Có code tracking nhưng người chơi thật không bao giờ đi tới → số liệu thiếu mà nhìn code tưởng đã làm.",
+  "category": "Lỗi (chỉ một phần chỗ bắn chết → Nghi ngờ)",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_event"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "no",
+  "fromRules": [
+    "event_only_in_dead_code",
+    "event_only_in_debug",
+    "some_origins_dead",
+    "dead_flag"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc; SKILL #9, #11, #12",
+  "status": "active"
+}

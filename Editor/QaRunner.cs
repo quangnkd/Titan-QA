@@ -1,0 +1,287 @@
+#nullable enable
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using TrackingChecker.Core;
+using TrackingChecker.Core.Analysis;
+using TrackingChecker.Core.Report;
+using TrackingChecker.Core.Rules;
+using UnityEditor;
+using UnityEngine;
+
+namespace Titan.TrackingQA
+{
+    /// <summary>
+    /// Chạy Check all / chạy tiếp điểm mù ngầm (không khoá Editor) và giữ kết quả.
+    /// Báo cáo gần nhất lưu ở Library/TrackingQA/last-report.json → đóng mở Unity vẫn xem lại được.
+    /// Phiên phân tích (để chạy tiếp điểm mù) chỉ giữ trong bộ nhớ: mất khi Unity nạp lại script.
+    /// </summary>
+    static class QaRunner
+    {
+        const string PrefDoc = "Titan.TrackingQA.DocPath.";
+        const string PrefPlatform = "Titan.TrackingQA.Platform";
+
+        public static string ProjectRoot => Path.GetDirectoryName(Application.dataPath)!;
+        public static string WorkDir => Path.Combine(ProjectRoot, "Library", "TrackingQA");
+        static string LastReportFile => Path.Combine(WorkDir, "last-report.json");
+        static string ProjectKey => ProjectRoot.ToLowerInvariant().GetHashCode().ToString("x");
+
+        /// <summary>Mỗi project nhớ file tracking của nó (lưu theo máy).</summary>
+        public static string DocPath
+        {
+            get => EditorPrefs.GetString(PrefDoc + ProjectKey, "");
+            set => EditorPrefs.SetString(PrefDoc + ProjectKey, value);
+        }
+
+        public static BuildPlatform Platform
+        {
+            get => EditorPrefs.GetInt(PrefPlatform, 0) == 1 ? BuildPlatform.iOS : BuildPlatform.Android;
+            set => EditorPrefs.SetInt(PrefPlatform, value == BuildPlatform.iOS ? 1 : 0);
+        }
+
+        public static CheckReport? Report { get; private set; }
+        /// <summary>Tăng mỗi khi báo cáo đổi (check mới, đúng thiết kế…) — cửa sổ chỉ vẽ lại danh sách khi số này đổi.</summary>
+        public static int Version { get; private set; }
+        public static CheckSession? Session { get; private set; }
+        public static bool Running { get; private set; }
+        public static string Status { get; private set; } = "";
+        public static readonly List<string> LogLines = new List<string>();
+
+        /// <summary>Báo cho cửa sổ vẽ lại (luôn gọi trên main thread).</summary>
+        public static event Action? Changed;
+
+        static readonly ConcurrentQueue<Action> MainThread = new ConcurrentQueue<Action>();
+        static CancellationTokenSource? _cts;
+        static bool _loaded;
+
+        [InitializeOnLoadMethod]
+        static void Init()
+        {
+            EditorApplication.update += Pump;
+            SetupKnowledge();
+        }
+
+        static void Pump()
+        {
+            bool any = false;
+            while (MainThread.TryDequeue(out var a)) { a(); any = true; }
+            if (any) Changed?.Invoke();
+        }
+
+        static void Post(Action a) => MainThread.Enqueue(a);
+
+        static void Log(string s) => Post(() =>
+        {
+            LogLines.Add(DateTime.Now.ToString("HH:mm:ss  ") + s);
+            if (LogLines.Count > 500) LogLines.RemoveRange(0, LogLines.Count - 500);
+            Status = s;
+        });
+
+        /// <summary>Kho kiến thức: Knowledge/ đi kèm package + chỉnh sửa trên máy (UserSettings, không lên git của game).</summary>
+        static void SetupKnowledge()
+        {
+            var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(QaRunner).Assembly);
+            var dir = info != null ? Path.Combine(info.resolvedPath, "Knowledge") : null;
+            if (dir != null && Directory.Exists(Path.Combine(dir, "common"))) Knowledge.SharedDir = dir;
+            Knowledge.LocalDir = Path.Combine(ProjectRoot, "UserSettings", "TrackingQA", "knowledge-local");
+        }
+
+        public static string? GameId => UnityProject.ReadGameId(ProjectRoot);
+
+        /// <summary>Đọc báo cáo gần nhất (lần đầu mở cửa sổ sau khi mở Unity).</summary>
+        public static void EnsureLoaded()
+        {
+            if (_loaded) return;
+            _loaded = true;
+            if (Report != null || !File.Exists(LastReportFile)) return;
+            try
+            {
+                Report = JsonSerializer.Deserialize<CheckReport>(File.ReadAllText(LastReportFile));
+                if (Report != null) GameData.ApplyExceptions(Report); // ngoại lệ có thể đã đổi từ lần trước
+                Version++;
+            }
+            catch (Exception e) { Debug.LogWarning("[Tracking QA] Không đọc được báo cáo cũ: " + e.Message); }
+        }
+
+        static void Save()
+        {
+            if (Report == null) return;
+            try
+            {
+                Directory.CreateDirectory(WorkDir);
+                File.WriteAllText(LastReportFile, JsonSerializer.Serialize(Report), Encoding.UTF8);
+            }
+            catch (Exception e) { Debug.LogWarning("[Tracking QA] Không lưu được báo cáo: " + e.Message); }
+        }
+
+        public static void CheckAll(string docPath, BuildPlatform platform) =>
+            Run("Check all", ct => CheckRunner.RunSessionAsync(new CheckRequest
+            {
+                RepoPath = ProjectRoot, SpecPath = docPath, Platform = platform, UseAi = false,
+                UnityInstallPath = Path.GetDirectoryName(EditorApplication.applicationContentsPath),
+            }, null, Log, ct), s => { Session = s; return s.Report; });
+
+        public static bool CanContinue => Session != null && Session.Report == Report && Report?.Coverage.Truncated > 0;
+
+        public static void ContinueBlindSpots()
+        {
+            var s = Session;
+            if (s == null) return;
+            Run("Chạy tiếp điểm mù", ct => CheckRunner.ContinueAsync(s, Log, ct), r => r);
+        }
+
+        static void Run<T>(string what, Func<CancellationToken, Task<T>> work, Func<T, CheckReport> result)
+        {
+            if (Running) return;
+            Running = true;
+            LogLines.Clear();
+            Status = what + "…";
+            _cts = new CancellationTokenSource();
+            var ct = _cts.Token;
+            var started = DateTime.Now;
+            // Không cho Unity nạp lại script khi đang chạy (nạp lại sẽ huỷ luồng phân tích giữa chừng)
+            EditorApplication.LockReloadAssemblies();
+            Changed?.Invoke();
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var r = result(await work(ct));
+                    Post(() =>
+                    {
+                        Report = r;
+                        Version++;
+                        Save();
+                        Status = Summary(r) + $" · {(DateTime.Now - started).TotalSeconds:F0}s";
+                    });
+                }
+                catch (OperationCanceledException) { Post(() => Status = "Đã huỷ."); }
+                catch (Exception e)
+                {
+                    Post(() => { Status = "Lỗi: " + e.Message; LogLines.Add("LỖI: " + e); });
+                    Debug.LogException(e);
+                }
+                finally
+                {
+                    Post(() =>
+                    {
+                        Running = false;
+                        EditorApplication.UnlockReloadAssemblies();
+                    });
+                }
+            });
+        }
+
+        public static void Cancel() => _cts?.Cancel();
+
+        public static string Summary(CheckReport r)
+        {
+            int N(FindingCategory c) => r.Findings.Count(f => f.Category == c && f.IsOpen);
+            return $"{N(FindingCategory.CodeError)} lỗi · {N(FindingCategory.Suspect)} nghi ngờ · {N(FindingCategory.Missing)} thiếu · {N(FindingCategory.DocIssue)} lỗi doc · {N(FindingCategory.OutOfPlan)} ngoài plan";
+        }
+
+        // ------------------------------------------------------------------ Đúng thiết kế
+
+        public static void Accept(Finding f, string reason)
+        {
+            if (Report?.GameId == null) return;
+            GameData.Accept(Report.GameId, f, reason, Environment.UserName);
+            GameData.ApplyExceptions(Report);
+            Version++;
+            Save();
+            Changed?.Invoke();
+        }
+
+        public static void Unaccept(Finding f)
+        {
+            if (Report?.GameId == null) return;
+            GameData.Unaccept(Report.GameId, f.StableKey());
+            GameData.ApplyExceptions(Report);
+            Version++;
+            Save();
+            Changed?.Invoke();
+        }
+
+        // ------------------------------------------------------------------ xuất
+
+        public static string? WriteHtml()
+        {
+            if (Report == null) return null;
+            Directory.CreateDirectory(WorkDir);
+            var p = Path.Combine(WorkDir, "report.html");
+            File.WriteAllText(p, HtmlReport.Render(Report), Encoding.UTF8);
+            return p;
+        }
+
+        public static void WriteExcel(string path)
+        {
+            if (Report != null) ExcelReport.Write(Report, path);
+        }
+    }
+
+    /// <summary>
+    /// Kích hoạt Check all không cần bấm (thử nghiệm / tự động hoá): tạo file Library/TrackingQA/run.request
+    /// chứa đường dẫn file tracking (dòng 1) và nền tảng (dòng 2, tuỳ chọn). Kết quả: last-report.json + spike-result.txt.
+    /// </summary>
+    [InitializeOnLoad]
+    static class RunRequestWatcher
+    {
+        static double _next;
+        static DateTime _startedAt;
+        static bool _waiting;
+
+        static RunRequestWatcher() => EditorApplication.update += Poll;
+
+        static void Poll()
+        {
+            if (EditorApplication.timeSinceStartup < _next) return;
+            _next = EditorApplication.timeSinceStartup + 2;
+
+            if (_waiting && !QaRunner.Running)
+            {
+                _waiting = false;
+                var r = QaRunner.Report;
+                var text = new StringBuilder()
+                    .AppendLine(r != null && r.CreatedAt >= _startedAt ? "OK" : "ERROR")
+                    .AppendLine(QaRunner.Status)
+                    .AppendLine(r != null ? $"Findings: {r.Findings.Count}, emissions: {r.EmissionCount}, files: {r.FilesAnalyzed}" : "")
+                    .AppendLine($"Thời gian: {(DateTime.Now - _startedAt).TotalSeconds:F1}s")
+                    .AppendLine("Xuất: " + TryExport())
+                    .AppendLine($"Runtime: {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+                try { File.WriteAllText(Path.Combine(QaRunner.WorkDir, "spike-result.txt"), text.ToString(), Encoding.UTF8); } catch { }
+            }
+
+            var f = Path.Combine(QaRunner.WorkDir, "run.request");
+            if (_waiting) return;
+            if (QaRunner.Running || !File.Exists(f)) return;
+            string[] lines;
+            try { lines = File.ReadAllLines(f); File.Delete(f); } catch { return; }
+            if (lines.Length == 0 || !File.Exists(lines[0].Trim())) return;
+            var platform = lines.Length > 1 && lines[1].Trim().Equals("iOS", StringComparison.OrdinalIgnoreCase) ? BuildPlatform.iOS : BuildPlatform.Android;
+            Debug.Log("[Tracking QA] Chạy Check all theo yêu cầu: " + lines[0]);
+            _startedAt = DateTime.Now;
+            _waiting = true;
+            QaRunner.CheckAll(lines[0].Trim(), platform);
+        }
+
+        /// <summary>Xuất thử HTML + Excel (kiểm tra ghi file chạy được trong Unity).</summary>
+        static string TryExport()
+        {
+            try
+            {
+                if (QaRunner.Report == null) return "không có báo cáo";
+                QaRunner.WriteHtml();
+                QaRunner.WriteExcel(Path.Combine(QaRunner.WorkDir, "report.xlsx"));
+                return "report.html + report.xlsx OK";
+            }
+            catch (Exception e) { return "LỖI " + e; }
+        }
+    }
+}

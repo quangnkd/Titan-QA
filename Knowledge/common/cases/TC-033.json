@@ -1,0 +1,22 @@
+{
+  "id": "TC-033",
+  "group": "H. IAP",
+  "title": "Phễu IAP: iap_show → iap_click → Purchase_Success hoặc iap_failed; iap_close có iap_duration; cùng product_id, placement trong 1 lần mua",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "iap_show",
+      "iap_click",
+      "iap_close",
+      "iap_failed"
+    ]
+  },
+  "check": {
+    "kind": "sequence"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

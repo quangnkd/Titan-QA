@@ -1,0 +1,17 @@
+{
+  "id": "TC-038",
+  "group": "J. Tutorial, live ops, tính năng",
+  "title": "event_live_ops.type là start / win / lose; event_play_index tăng theo từng event",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": "event_live_ops"
+  },
+  "check": {
+    "kind": "counter"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master",
+  "status": "active"
+}

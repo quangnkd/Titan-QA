@@ -1,0 +1,97 @@
+{
+  "_comment": "Cách nhận ra thao tác người chơi trong code Unity — dùng cho 'Lý do trong code' và 'Tái hiện'. Sửa / thêm ở đây, không cần sửa code. {cls} = tên lớp, {name} = tên hàm.",
+  "version": 1,
+
+  "unityMessages": {
+    "_comment": "Hàm Unity tự gọi (luôn được coi là có chạy). 'entries': cách diễn đạt cho người chơi; tên không có trong entries thì dùng 'default'. 'kind': unity / app.",
+    "names": ["Awake","Start","OnEnable","OnDisable","OnDestroy","Update","LateUpdate","FixedUpdate","OnApplicationPause","OnApplicationFocus",
+              "OnApplicationQuit","OnValidate","Reset","OnGUI","OnTriggerEnter","OnTriggerEnter2D","OnTriggerExit","OnTriggerExit2D","OnTriggerStay",
+              "OnTriggerStay2D","OnCollisionEnter","OnCollisionEnter2D","OnCollisionExit","OnCollisionExit2D","OnMouseDown","OnMouseUp","OnMouseUpAsButton",
+              "OnMouseEnter","OnMouseExit","OnBecameVisible","OnBecameInvisible","OnRectTransformDimensionsChange","OnTransformParentChanged",
+              "OnPointerClick","OnPointerDown","OnPointerUp","OnPointerEnter","OnPointerExit","OnBeginDrag","OnDrag","OnEndDrag","OnDrop","OnSubmit","OnSelect",
+              "OnAnimatorMove","OnParticleSystemStopped","OnBeforeSerialize","OnAfterDeserialize","Main"],
+    "entries": [
+      { "match": "^(Start|Awake|OnEnable)$", "kind": "unity", "text": "Mở / hiện {cls}" },
+      { "match": "^(OnDisable|OnDestroy)$", "kind": "unity", "text": "Đóng / ẩn {cls}" },
+      { "match": "^(OnApplicationPause|OnApplicationFocus)$", "kind": "app", "text": "Đưa app xuống nền (bấm nút Home của điện thoại) rồi mở lại" },
+      { "match": "^OnApplicationQuit$", "kind": "app", "text": "Tắt hẳn app" },
+      { "match": "^(Update|LateUpdate|FixedUpdate|OnGUI)$", "kind": "unity", "text": "Trong lúc {cls} đang hoạt động (game kiểm tra liên tục)" },
+      { "match": "^On(Trigger|Collision)", "kind": "unity", "text": "Khi có va chạm với {cls} trong gameplay" },
+      { "match": "^(OnMouse|OnPointer)|^(OnSubmit|OnSelect)$", "kind": "unity", "text": "Chạm vào {cls}" },
+      { "match": "Drag|^OnDrop$", "kind": "unity", "text": "Kéo / thả {cls}" }
+    ],
+    "default": { "kind": "unity", "text": "{cls}.{name} (Unity tự gọi)" }
+  },
+
+  "listenerMethods": ["AddListener", "Subscribe", "AddEventListener", "RegisterListener", "AddHandler", "Listen", "RegisterCallback"],
+
+  "debugMarkers": {
+    "_comment": "Nút / màn chỉ có ở bản dev (cheat, level editor...) — xếp cuối, không dùng làm cách tái hiện chính, không dùng để kết luận giá trị theo hành động.",
+    "pattern": "Cheat|Debug|Tester|TestPanel|DevPanel|DevTool|Editor|LevelLab|Sandbox"
+  },
+
+  "deviceFilter": {
+    "_comment": "Đường đi chỉ có trong Unity Editor / bản debug → người chơi thật (bản release trên điện thoại) không gặp: lỗi trên đường đó được ẩn (xem lại được), event chỉ bắn từ đó bị báo là người chơi thật không bao giờ bắn. #if UNITY_EDITOR và thư mục Editor đã được loại sẵn khi đọc code. editorTrue / editorFalse: regex trên 1 vế điều kiện (đã bỏ khoảng trắng) mà khi đúng / khi sai thì chắc chắn đang ở Editor / bản debug.",
+    "editorTrue": "^(UnityEngine\\.)?(Application\\.isEditor|Debug\\.isDebugBuild)(==true)?$|^!(UnityEngine\\.)?Application\\.isMobilePlatform$|^(UnityEngine\\.)?Application\\.platform==(UnityEngine\\.)?RuntimePlatform\\.\\w*Editor$|^(UnityEngine\\.)?RuntimePlatform\\.\\w*Editor==(UnityEngine\\.)?Application\\.platform$",
+    "editorFalse": "^!(UnityEngine\\.)?(Application\\.isEditor|Debug\\.isDebugBuild)$|^(UnityEngine\\.)?(Application\\.isEditor|Debug\\.isDebugBuild)==false$|^(UnityEngine\\.)?Application\\.isMobilePlatform$|^(UnityEngine\\.)?Application\\.platform!=(UnityEngine\\.)?RuntimePlatform\\.\\w*Editor$",
+    "editorOnlyMethods": ["OnValidate", "Reset", "OnDrawGizmos", "OnDrawGizmosSelected", "OnSceneGUI"],
+    "editorOnlyAttributes": ["ContextMenu", "ContextMenuAttribute", "ContextMenuItem", "ContextMenuItemAttribute", "Button", "ButtonAttribute", "InspectorButton", "InspectorButtonAttribute", "EasyButtons"]
+  },
+
+  "namedButton": {
+    "_comment": "Không lần ra nơi gọi nhưng tên hàm giống hàm xử lý nút (OnClickPlay, OnHomeClicked...) → đoán là bấm nút. Nhóm bắt được đầu tiên là tên nút.",
+    "pattern": "^(?:On)?(?:Click|Btn|Button|Tap|Press)_?([A-Z]\\w*)$|^On(\\w+?)(?:Click(?:ed)?|Pressed|Tapped|Button)$"
+  },
+
+  "adSdk": {
+    "_comment": "Callback của SDK quảng cáo (AppLovin MAX) → lời người chơi. {f} = loại quảng cáo.",
+    "pattern": "\\b(Banner|MRec|Interstitial|RewardedInterstitial|Rewarded|AppOpen)\\.OnAd(\\w+?)Event$",
+    "formats": { "Banner": "banner", "MRec": "MREC", "Interstitial": "inter (xen kẽ)", "Rewarded": "thưởng (reward)", "RewardedInterstitial": "inter có thưởng", "AppOpen": "app open" },
+    "events": {
+      "Clicked": "Bấm vào quảng cáo {f}",
+      "Displayed": "Quảng cáo {f} hiện lên",
+      "Hidden": "Đóng quảng cáo {f}",
+      "ReceivedReward": "Xem hết quảng cáo {f} và nhận thưởng",
+      "Loaded": "Quảng cáo {f} tải xong (game tự tải ngầm)",
+      "LoadFailed": "Quảng cáo {f} tải lỗi (vd tắt mạng)",
+      "DisplayFailed": "Quảng cáo {f} hiển thị lỗi",
+      "RevenuePaid": "Quảng cáo {f} hiển thị (SDK ghi nhận doanh thu)",
+      "Expanded": "Mở rộng quảng cáo {f}",
+      "Collapsed": "Thu gọn quảng cáo {f}"
+    },
+    "otherEvent": "Quảng cáo {f}: {name}"
+  },
+
+  "callbackSteps": [
+    { "_comment": "Đường đi qua callback có tên khớp → thêm bước chờ cho người chơi (khớp dòng đầu tiên)." },
+    { "pattern": "Reward|ShowVideo", "step": "Xem hết quảng cáo thưởng" },
+    { "pattern": "ShowInter|Interstitial", "step": "Đợi quảng cáo inter (xen kẽ) hiện rồi đóng — nếu không có quảng cáo, game chạy tiếp ngay" },
+    { "pattern": "Purchase|Buy|IAP", "step": "Hoàn tất thanh toán" },
+    { "pattern": "LoadScene", "step": "Đợi màn mới tải xong" },
+    { "pattern": "OnComplete|\\.DO[A-Z]|Tween|Anim", "step": "Đợi hiệu ứng chạy xong" },
+    { "pattern": "DelayedCall|Delay|Invoke|Wait|Coroutine|Timer", "step": "Đợi vài giây" }
+  ],
+
+  "milestones": [
+    { "_comment": "Tên hàm trên đường đi khớp → mốc diễn biến cho bước tái hiện (suy từ tên hàm)." },
+    { "pattern": "Win|Victory|Complete|Clear(ed)?\\b", "text": "Thắng level" },
+    { "pattern": "Lose|Lost|Fail|GameOver|Defeat", "text": "Thua level" },
+    { "pattern": "Revive|Continue", "text": "Hồi sinh / chơi tiếp" },
+    { "pattern": "Replay|Retry|Restart", "text": "Chơi lại" },
+    { "pattern": "Pause", "text": "Tạm dừng" },
+    { "pattern": "Home|BackToMenu|MainMenu", "text": "Về màn Home" },
+    { "pattern": "Quit|Exit", "text": "Thoát" },
+    { "pattern": "Reward(ed)?Ad|WatchAd|ShowReward", "text": "Xem quảng cáo nhận thưởng" },
+    { "pattern": "Purchase|Buy|IAP", "text": "Mua" },
+    { "pattern": "Booster|UseItem", "text": "Dùng booster" },
+    { "pattern": "Tutorial", "text": "Làm tutorial" },
+    { "pattern": "Spin|Wheel", "text": "Quay vòng quay" },
+    { "pattern": "Unlock", "text": "Mở khoá" }
+  ],
+
+  "levelEvents": {
+    "_comment": "Event diễn ra trong 1 level (cần 'Vào chơi 1 level' trước khi tái hiện): tên bắt đầu bằng prefix, trừ các event mở đầu.",
+    "prefix": "level_",
+    "except": ["level_start", "level_unlock"]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "TC-016",
+  "group": "B. Luồng chơi",
+  "title": "resource_update.value luôn dương (kể cả khi spend); remaining_value = số dư sau thay đổi",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "doc": [
+      "resource_update",
+      "earn_resource",
+      "spend_resource",
+      "buy_resource"
+    ]
+  },
+  "check": {
+    "kind": "runtime_value"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "SKILL, Master",
+  "status": "active"
+}

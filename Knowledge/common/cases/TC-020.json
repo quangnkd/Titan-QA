@@ -1,0 +1,17 @@
+{
+  "id": "TC-020",
+  "group": "D. Package Titan / SDK",
+  "title": "Tên booster_N đúng tab Booster list và nhất quán: cùng 1 booster dùng cùng số ở level_* (số đã dùng), resource_update.item_name và property booster_N",
+  "category": "Lỗi",
+  "appliesWhen": {
+    "docBoosters": true
+  },
+  "check": {
+    "kind": "custom"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "Master: Booster list (đồng bộ tên giữa các dự án)",
+  "status": "active"
+}

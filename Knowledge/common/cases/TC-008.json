@@ -1,0 +1,18 @@
+{
+  "id": "TC-008",
+  "group": "A. So với doc",
+  "title": "User property trong doc phải được set",
+  "category": "Thiếu",
+  "appliesWhen": {},
+  "check": {
+    "kind": "doc_property"
+  },
+  "staticCheck": "yes",
+  "runtimeCheck": "yes",
+  "fromRules": [
+    "prop_missing"
+  ],
+  "basis": "doc",
+  "source": "Luật gốc của Tracking Checker",
+  "status": "active"
+}

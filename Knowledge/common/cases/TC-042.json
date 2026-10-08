@@ -1,0 +1,15 @@
+{
+  "id": "TC-042",
+  "group": "K. UA và mở app lần đầu",
+  "title": "Không bắn quá 100 lệnh tracking trước khi Firebase sẵn sàng (lúc mở app) — quá thì bị bỏ",
+  "category": "Nghi ngờ",
+  "appliesWhen": {},
+  "check": {
+    "kind": "custom"
+  },
+  "staticCheck": "partial",
+  "runtimeCheck": "yes",
+  "basis": "doc",
+  "source": "SKILL mục 1",
+  "status": "active"
+}
