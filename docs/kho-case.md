@@ -229,4 +229,4 @@ Phần suy luận của TC-030, TC-031, TC-037 **đã chốt bật** (08/10/2026
 1. Cấu trúc 1 case (mục 2) và danh sách loại kiểm tra (mục 3) như trên được chưa?
 2. Danh sách 44 case ban đầu có cần thêm / bỏ / đổi nhóm case nào không? (Phần suy luận của TC-030, TC-031, TC-037: đã chốt bật.)
 3. **Ai duyệt** case chung (merge PR vào package)?
-4. Mã: `TC-xxx` cho case chung, `G-xxx` cho case riêng game — ổn không?
+4. ~~Mã: `TC-xxx` cho case chung, `G-xxx` cho case riêng game — ổn không?~~ **Đã chốt 08/10/2026**: `TC-xxx` cho case chung, `G-xxx` cho case riêng game.
