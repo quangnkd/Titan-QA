@@ -104,8 +104,13 @@ namespace Titan.TrackingQA
             try
             {
                 Report = JsonSerializer.Deserialize<CheckReport>(File.ReadAllText(LastReportFile));
-                if (Report != null) GameData.ApplyExceptions(Report); // ngoại lệ có thể đã đổi từ lần trước
-                if (Report != null) RecordFeedback.Apply(Report, RecordFeedback.Load(RecordController.FeedbackPath));
+                if (Report != null)
+                {
+                    RecordFeedback.Apply(Report, RecordFeedback.Load(RecordController.FeedbackPath));
+                    RecordController.Issues.MergeInto(Report);
+                    GameData.ApplyExceptions(Report); // ngoại lệ có thể đã đổi từ lần trước
+                    CheckCodeChanges(notify: false);
+                }
                 Version++;
             }
             catch (Exception e) { Debug.LogWarning("[Tracking QA] Không đọc được báo cáo cũ: " + e.Message); }
@@ -158,8 +163,17 @@ namespace Titan.TrackingQA
                     var r = result(await work(ct));
                     Post(() =>
                     {
-                        // Ghép kết quả Record (xác nhận / bác bỏ / không tái hiện) — lưu theo mã ổn định nên giữ qua các lần Check all
-                        try { RecordFeedback.Apply(r, RecordFeedback.Load(RecordController.FeedbackPath)); }
+                        // So với lần check trước (mục mới / đã sửa), băm file code có mục báo (để báo "code đã đổi")
+                        try { ReportDiff.Compare(Report, r); ReportDiff.HashFiles(r); }
+                        catch (Exception e) { Debug.LogWarning("[Tracking QA] Không so được với lần check trước: " + e.Message); }
+                        // Ghép kết quả Record (xác nhận / bác bỏ / không tái hiện) — lưu theo mã ổn định nên giữ qua các lần Check all;
+                        // và các lỗi Record còn mở (bảng Lỗi Record) để xem chung
+                        try
+                        {
+                            RecordFeedback.Apply(r, RecordFeedback.Load(RecordController.FeedbackPath));
+                            RecordController.Issues.MergeInto(r);
+                            GameData.ApplyExceptions(r);
+                        }
                         catch (Exception e) { Debug.LogWarning("[Tracking QA] Không ghép được kết quả Record: " + e.Message); }
                         Report = r;
                         Version++;
@@ -202,12 +216,100 @@ namespace Titan.TrackingQA
             Changed?.Invoke();
         }
 
-        // ------------------------------------------------------------------ Đúng thiết kế
-
-        public static void Accept(Finding f, string reason)
+        /// <summary>Bảng Lỗi Record đổi → đưa lại các lỗi còn mở vào báo cáo đang xem.</summary>
+        public static void MergeRecordIssues()
         {
-            if (Report?.GameId == null) return;
-            GameData.Accept(Report.GameId, f, reason, Environment.UserName);
+            if (Report == null) return;
+            RecordController.Issues.MergeInto(Report);
+            GameData.ApplyExceptions(Report);
+            CheckCodeChanges(notify: false);
+            Version++;
+            Save();
+            Changed?.Invoke();
+        }
+
+        // ------------------------------------------------------------------ code đã đổi → có thể đã sửa
+
+        static readonly Dictionary<string, (DateTime Time, string? Hash)> Hashes = new Dictionary<string, (DateTime, string?)>();
+
+        /// <summary>Mã băm file code (đường dẫn tương đối project) — nhớ theo thời điểm sửa file để không băm lại mỗi event.</summary>
+        public static string? FileHash(string rel)
+        {
+            var full = Path.Combine(ProjectRoot, rel);
+            var t = File.Exists(full) ? File.GetLastWriteTimeUtc(full) : DateTime.MinValue;
+            if (Hashes.TryGetValue(rel, out var h) && h.Time == t) return h.Hash;
+            var hash = ReportDiff.Hash(ProjectRoot, rel);
+            Hashes[rel] = (t, hash);
+            return hash;
+        }
+
+        /// <summary>Đánh dấu mục (Check all + lỗi Record) có file code đã đổi từ lúc check / lúc gặp — gọi khi mở / quay lại cửa sổ.</summary>
+        public static void CheckCodeChanges(bool notify = true)
+        {
+            if (Report == null) return;
+            bool changed;
+            try
+            {
+                changed = ReportDiff.MarkChanged(Report);
+                changed |= RecordController.Issues.MarkCodeChanged(FileHash);
+                foreach (var f in Report.Findings.Where(f => f.RecordIssueId != null))
+                {
+                    var flag = RecordController.Issues.Items.FirstOrDefault(x => x.Id == f.RecordIssueId)?.CodeChanged == true;
+                    if (f.CodeChanged != flag) { f.CodeChanged = flag; changed = true; }
+                }
+            }
+            catch (Exception e) { Debug.LogWarning("[Tracking QA] Không kiểm được thay đổi code: " + e.Message); return; }
+            if (!changed) return;
+            Version++;
+            if (notify) Changed?.Invoke();
+        }
+
+        // ------------------------------------------------------------------ bảng Lỗi Record
+
+        public static void SetRecordStatus(string id, RecordIssueStatus status, string? note = null)
+        {
+            RecordController.Issues.SetStatus(id, status, Environment.UserName, note);
+            RecordController.SaveIssues();
+            MergeRecordIssues();
+            RecordController.Touch();
+        }
+
+        // ------------------------------------------------------------------ case riêng game (G-xxx)
+
+        /// <summary>Lưu mục thành case riêng của game (G-xxx, trên máy) và gắn lại mã case. Trả về mã case.</summary>
+        public static string? SaveCase(Finding f, string title, string? why)
+        {
+            var game = Report?.GameId ?? GameId;
+            if (game == null) return null;
+            string id;
+            using (Knowledge.ForGame(game)) id = GameData.SaveCase(game, f, title, why, Environment.UserName);
+            if (f.RecordIssueId != null && RecordController.Issues.Items.FirstOrDefault(x => x.Id == f.RecordIssueId) is { } it)
+            {
+                it.SavedCaseId = id;
+                RecordController.SaveIssues();
+                RecordController.Touch();
+            }
+            if (Report != null)
+            {
+                CaseEngine.Retag(Report);
+                GameData.ApplyExceptions(Report);
+                Version++;
+                Save();
+                Changed?.Invoke();
+            }
+            return id;
+        }
+
+        // ------------------------------------------------------------------ Đúng thiết kế / Check all báo nhầm
+
+        /// <summary>Lưu ngoại lệ của game. kind = "false_positive" khi Check all báo nhầm (cause = vì sao, để học); null = đúng thiết kế.</summary>
+        public static void Accept(Finding f, string reason, string? kind = null, string? cause = null)
+        {
+            var game = Report?.GameId ?? GameId;
+            if (game == null) return;
+            GameData.Accept(game, f, reason, Environment.UserName, kind, cause);
+            RecordController.Touch();
+            if (Report == null) return;
             GameData.ApplyExceptions(Report);
             Version++;
             Save();
@@ -216,8 +318,11 @@ namespace Titan.TrackingQA
 
         public static void Unaccept(Finding f)
         {
-            if (Report?.GameId == null) return;
-            GameData.Unaccept(Report.GameId, f.StableKey());
+            var game = Report?.GameId ?? GameId;
+            if (game == null) return;
+            GameData.Unaccept(game, f.StableKey());
+            RecordController.Touch();
+            if (Report == null) return;
             GameData.ApplyExceptions(Report);
             Version++;
             Save();

@@ -35,6 +35,21 @@ namespace Titan.TrackingQA
 
         public static string Dir => Path.Combine(QaRunner.ProjectRoot, "UserSettings", "TrackingQA", "record");
         public static string FeedbackPath => Path.Combine(QaRunner.ProjectRoot, "UserSettings", "TrackingQA", "record-feedback.json");
+        public static string IssuesPath => Path.Combine(QaRunner.ProjectRoot, "UserSettings", "TrackingQA", "record-issues.json");
+
+        static RecordIssueLog? _issues;
+        /// <summary>Bảng Lỗi Record: lỗi mới (Check all chưa báo) cộng dồn qua mọi phiên, có số lần và trạng thái.</summary>
+        public static RecordIssueLog Issues => _issues ??= RecordIssueLog.Load(IssuesPath);
+        static bool _issuesDirty;
+
+        public static void SaveIssues()
+        {
+            try { Issues.Save(IssuesPath); _issuesDirty = false; }
+            catch (Exception e) { Debug.LogWarning("[Tracking QA] Không lưu được bảng Lỗi Record: " + e.Message); }
+        }
+
+        /// <summary>Báo cửa sổ Record vẽ lại (bảng Lỗi Record / ngoại lệ đổi).</summary>
+        public static void Touch() => Version++;
 
         public static bool AutoRecord
         {
@@ -199,6 +214,23 @@ namespace Titan.TrackingQA
                 }
                 catch (Exception ex) { Debug.LogWarning("[Tracking QA] Không đối chiếu được với Check all: " + ex.Message); }
             }
+            // Bảng Lỗi Record: cộng lỗi mới (Check all chưa báo), đếm lần đi qua đúng chỗ mà không lỗi
+            try
+            {
+                var before = s.Events.Take(s.Events.Count - 1).ToList();
+                if (Issues.Observe(e, s.Id, before, QaRunner.FileHash)) _issuesDirty = true;
+                // Lỗi thứ tự property gắn vào dòng property phía trước
+                foreach (var p in s.Events.Where(x => x.Kind == "property" && x.Issues.Any(i => i.KnownFindingId == null && i.Rule == "flow_property_before_event" && i.Text.Contains($"(#{e.Seq})"))).ToList())
+                {
+                    var sub = new RecordedEvent
+                    {
+                        Seq = p.Seq, T = p.T, Kind = p.Kind, Name = p.Name, Time = p.Time, Params = p.Params, Stack = p.Stack,
+                        Issues = p.Issues.Where(i => i.Text.Contains($"(#{e.Seq})")).ToList(),
+                    };
+                    if (Issues.Observe(sub, s.Id, s.Events.TakeWhile(x => x != p).ToList(), QaRunner.FileHash)) _issuesDirty = true;
+                }
+            }
+            catch (Exception ex) { Debug.LogWarning("[Tracking QA] Không ghi được bảng Lỗi Record: " + ex.Message); }
             _dirty = true;
             Version++;
         }
@@ -238,10 +270,11 @@ namespace Titan.TrackingQA
         {
             if (Pending.Count > 0) Flush(); // frame xong → xử lý các mục của frame đó
             if (Current == null || EditorApplication.timeSinceStartup < _nextSave) return;
-            if (!_dirty && !_feedbackDirty) return;
+            if (!_dirty && !_feedbackDirty && !_issuesDirty) return;
             _nextSave = EditorApplication.timeSinceStartup + 2; // ghi dần mỗi 2 giây — Unity treo / tắt đột ngột vẫn còn phần đã chơi
             Save();
             SaveFeedback();
+            FlushIssues();
         }
 
         static void End()
@@ -253,6 +286,8 @@ namespace Titan.TrackingQA
             if (!string.IsNullOrEmpty(RecordBus.Status) && RecordBus.Status != "Đang ghi") Current.Notes.Add(RecordBus.Status);
             Save();
             SaveFeedback();
+            if (Issues.CommitPending(Current.Id)) _issuesDirty = true;
+            FlushIssues();
             try { RecordStore.Prune(Dir, KeepSessions); } catch { }
             Version++;
         }
@@ -275,6 +310,15 @@ namespace Titan.TrackingQA
                 QaRunner.ApplyRecordFeedback(_feedback);
             }
             catch (Exception e) { Debug.LogWarning("[Tracking QA] Không lưu được kết quả đối chiếu Record: " + e.Message); }
+        }
+
+        /// <summary>Lưu bảng Lỗi Record và đưa lỗi còn mở vào cửa sổ CheckAll.</summary>
+        static void FlushIssues()
+        {
+            if (!_issuesDirty) return;
+            SaveIssues();
+            try { QaRunner.MergeRecordIssues(); }
+            catch (Exception e) { Debug.LogWarning("[Tracking QA] Không cập nhật được cửa sổ CheckAll: " + e.Message); }
         }
 
         static bool SamePath(string a, string b)

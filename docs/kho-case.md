@@ -132,7 +132,9 @@ Cửa sổ Tracking QA sẽ có thêm tab **Theo case**: mỗi case 1 dòng vớ
 | **Riêng game** (`G-xxx`) | `games/<bundle id>/cases/` | Lỗi đặc thù của game (tính năng riêng, nút riêng) | Ngay trên máy; gửi lên kho chung qua PR khi muốn cả team dùng |
 | **Chung** (`TC-xxx`) | `common/cases/` | Quy tắc đúng với mọi game Titan | Sau khi: chạy trên **bộ game chuẩn** không báo nhầm + có game mẫu bắt được lỗi + **người duyệt merge PR** (QA phụ trách package; Claude chuẩn bị và review trước) |
 
+- Lưu case riêng game ngay trong Unity: nút **Lưu thành case G-xxx…** ở chi tiết 1 mục (cửa sổ CheckAll) hoặc 1 lỗi (cửa sổ Record → Lỗi tổng hợp). Case tạo ra khớp đúng luật + event + param của mục đó, ghi nguồn (Check all F… / Record R…, người lưu, ngày) và các bước tái hiện.
 - Case riêng game có thể nâng lên case chung, khi đó case chung ghi lại nguồn (`từ G-001 của Bloom Tile`).
+- Mục Check all báo nhầm được lưu kèm lý do (`exceptions.json`: `kind: "false_positive"`, `cause`: code_unused / remote_config / wrong_flow / editor_only / other) — gom lại để sửa luật / thêm case chung.
 - Mã case không đổi, không dùng lại. Case không dùng nữa thì để `retired`, không xoá, để báo cáo cũ vẫn tra được.
 - Claude (tuỳ chọn) giúp: khái quát case từ Record thành case chung, tìm case trùng, tạo game mẫu, chạy thử. Người duyệt luôn quyết định cuối.
 

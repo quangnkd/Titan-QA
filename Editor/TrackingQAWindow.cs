@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using TrackingChecker.Core;
 using TrackingChecker.Core.Analysis;
+using TrackingChecker.Core.Live;
 using TrackingChecker.Core.Report;
 using TrackingChecker.Core.Rules;
 using UnityEditor;
@@ -28,6 +29,10 @@ namespace Titan.TrackingQA
         bool _showAccepted, _hideRejected = true;
         bool _showNotOnDevice; // mục người chơi thật không gặp (chỉ Editor / bản debug / nút cheat) — ẩn mặc định
         bool _showRefuted;     // mục Record bác bỏ (Check all đoán sai) — ẩn mặc định
+        bool _onlyRecord;      // chỉ lỗi Record (gặp khi chơi)
+        bool _showFixed;       // mục đã sửa so với lần check trước
+        string _acceptKind = "design"; // biểu mẫu đang mở: design (Đúng thiết kế) / false_positive (Check all báo nhầm) / case (lưu G-xxx)
+        string? _acceptPrefill;
         string _search = "";
         int _tab; // 0 = Lý do trong code, 1 = Tái hiện
         string? _selectedKey;
@@ -60,6 +65,17 @@ namespace Titan.TrackingQA
 
         void OnEnable() => QaRunner.Changed += Refresh;
         void OnDisable() => QaRunner.Changed -= Refresh;
+        void OnFocus() => QaRunner.CheckCodeChanges();
+
+        /// <summary>Mở cửa sổ và chọn sẵn mục của 1 lỗi Record (từ cửa sổ Record).</summary>
+        public static void RevealRecord(string recordIssueId)
+        {
+            var w = GetWindow<TrackingQAWindow>("Tracking QA · CheckAll");
+            var f = QaRunner.Report?.Findings.FirstOrDefault(x => x.RecordIssueId == recordIssueId);
+            if (f == null) return;
+            w._showFixed = false;
+            w.SetMode(0, finding: f);
+        }
 
         void CreateGUI()
         {
@@ -260,6 +276,8 @@ namespace Titan.TrackingQA
                          $"{r.EmissionCount} luồng bắn · {r.AnalysisSeconds:F0}s · {r.CreatedAt:dd/MM HH:mm}" +
                          $"\nEvent trong doc không lỗi: <b>{docEvents.Count(s => s.Worst == FindingCategory.Ok)}/{docEvents.Count}</b>" +
                          (r.KnowledgeData != null ? $" · Kiến thức: {r.KnowledgeData}" : "") +
+                         (r.PreviousAt != null ? $"\nSo với lần check trước ({r.PreviousAt:dd/MM HH:mm}): <b>{r.Findings.Count(f => f.IsNew && f.IsOpen)}</b> mục mới · <b>{r.FixedSincePrevious.Count}</b> đã sửa" : "") +
+                         (r.Findings.Count(f => f.CodeChanged && f.IsOpen) is var changed and > 0 ? $"\n<b>{changed}</b> mục có file code đã đổi từ lúc check — có thể đã sửa, bấm Check all để kiểm lại" : "") +
                          (r.AiStatus != null ? "\n" + r.AiStatus : "");
 
             var good = r.Coverage.Verdict == "Tốt";
@@ -304,7 +322,7 @@ namespace Titan.TrackingQA
                 return;
             }
 
-            int N(FindingCategory c) => r.Findings.Count(f => f.Category == c && f.IsOpen);
+            int N(FindingCategory c) => r.Findings.Count(f => f.Category == c && f.IsOpen && (!_onlyRecord || f.RecordIssueId != null));
             foreach (var c in Cats)
                 _chips.Add(Chip($"{HtmlReport.CatLabel(c)} · {N(c)}", Cls(c), _cats.Contains(c), on =>
                 {
@@ -315,6 +333,11 @@ namespace Titan.TrackingQA
             if (acc > 0) _chips.Add(Chip($"Đã chấp nhận · {acc}", "acc", _showAccepted, on => { _showAccepted = on; RebuildList(); }));
             var refuted = r.Findings.Count(f => f.Accepted == null && f.RecordRefuted != null);
             if (refuted > 0) _chips.Add(Chip($"Record bác bỏ · {refuted}", "info", _showRefuted, on => { _showRefuted = on; RebuildList(); }));
+            var rec = r.Findings.Count(f => f.RecordIssueId != null && f.IsOpen);
+            if (rec > 0 || _onlyRecord)
+                _chips.Add(Chip($"Chỉ lỗi Record · {rec}", "vio", _onlyRecord, on => { _onlyRecord = on; RenderChips(r); RebuildList(); }));
+            if (r.FixedSincePrevious.Count > 0)
+                _chips.Add(Chip($"Đã sửa so với lần trước · {r.FixedSincePrevious.Count}", "pass", _showFixed, on => { _showFixed = on; RebuildList(); }));
         }
 
         // Nhóm kết quả case để lọc / tô màu: chỉ mục "Lỗi" (bắn sai) là Vi phạm; Nghi ngờ / Thiếu / Lỗi doc / Ngoài plan xếp dưới
@@ -353,6 +376,7 @@ namespace Titan.TrackingQA
             if (finding != null)
             {
                 _selectedKey = finding.StableKey();
+                if (_onlyRecord && finding.RecordIssueId == null) _onlyRecord = false;
                 if (finding.Accepted != null) _showAccepted = true; else _cats.Add(finding.Category);
                 if (finding.Accepted == null && finding.NotOnDevice != null) { _showNotOnDevice = true; _deviceToggle.SetValueWithoutNotify(true); }
             }
@@ -395,8 +419,11 @@ namespace Titan.TrackingQA
                         .Where(c => _caseFilter.Contains(CaseGroup(c.Status)))
                         .Where(c => q.Length == 0 || Has(c.Id, q) || Has(c.Title, q) || Has(c.Group, q))
                         .OrderBy(c => CaseEngine.StatusOrder(c.Status)).ThenBy(c => c.Id, StringComparer.Ordinal));
+                else if (_showFixed)
+                    _items.AddRange(r.FixedSincePrevious.Where(f => q.Length == 0 || Matches(f, q)).OrderBy(f => f.Category.Rank()));
                 else
                     _items.AddRange(r.Findings
+                        .Where(f => !_onlyRecord || f.RecordIssueId != null)
                         .Where(f => f.Accepted != null ? _showAccepted : f.RecordRefuted != null ? _showRefuted : _cats.Contains(f.Category) && (f.NotOnDevice == null || _showNotOnDevice))
                         .Where(f => !_hideRejected || f.AiVerdict != "rejected" || f.Accepted != null)
                         .Where(f => q.Length == 0 || Matches(f, q))
@@ -481,10 +508,13 @@ namespace Titan.TrackingQA
                 return;
             }
             var f = (Finding)_items[i];
-            pill.text = f.Accepted != null ? "Đã chấp nhận" : f.RecordRefuted != null ? "Record bác bỏ" : f.NotOnDevice != null ? "Chỉ Editor/cheat" : HtmlReport.CatLabel(f.Category);
-            pill.AddToClassList(f.Accepted != null ? "acc" : f.RecordRefuted != null || f.NotOnDevice != null ? "na" : Cls(f.Category));
+            var isFixed = QaRunner.Report?.FixedSincePrevious.Contains(f) == true;
+            pill.text = isFixed ? "Đã sửa" : f.Accepted != null ? (f.Accepted.FalsePositive ? "Báo nhầm" : "Đã chấp nhận") : f.RecordRefuted != null ? "Record bác bỏ" : f.NotOnDevice != null ? "Chỉ Editor/cheat" : HtmlReport.CatLabel(f.Category);
+            pill.AddToClassList(isFixed ? "pass" : f.Accepted != null ? "acc" : f.RecordRefuted != null || f.NotOnDevice != null ? "na" : Cls(f.Category));
             row.Q<Label>(className: "subj").text = f.Subject;
-            row.Q<Label>(className: "fid").text = (f.CaseIds.Count > 0 ? $"{f.Id} · {string.Join(", ", f.CaseIds)}" : f.Id) + (f.RecordConfirmed > 0 ? " · Record ✓" : "");
+            row.Q<Label>(className: "fid").text = (f.CaseIds.Count > 0 ? $"{f.Id} · {string.Join(", ", f.CaseIds)}" : f.Id)
+                + (isFixed ? " · lần trước" : f.RecordIssueId != null ? $" · Record · {f.RecordStatus}" : f.RecordConfirmed > 0 ? " · Record ✓" : "")
+                + (f.IsNew && !isFixed ? " · mới" : "") + (f.CodeChanged ? " · code đã đổi" : "");
             row.Q<Label>(className: "row-title").text = f.Title;
             row.tooltip = f.Title;
         }
@@ -510,12 +540,16 @@ namespace Titan.TrackingQA
             using var _ = Knowledge.ForGame(r.GameId);
 
             // Đầu mục: nhóm, mã, đối tượng, độ chắc
+            var isFixed = r.FixedSincePrevious.Contains(f);
             var head = Row("d-head");
-            var pill = new Label(f.Accepted != null ? "Đã chấp nhận" : HtmlReport.CatLabel(f.Category));
+            var pill = new Label(isFixed ? "Đã sửa" : f.Accepted != null ? (f.Accepted.FalsePositive ? "Báo nhầm" : "Đã chấp nhận") : HtmlReport.CatLabel(f.Category));
             pill.AddToClassList("pill");
-            pill.AddToClassList(f.Accepted != null ? "acc" : Cls(f.Category));
+            pill.AddToClassList(isFixed ? "pass" : f.Accepted != null ? "acc" : Cls(f.Category));
             head.Add(pill);
             head.Add(Tag(f.Id));
+            if (f.RecordIssueId != null) head.Add(Tag("Record · " + f.RecordStatus, "rec-ok", "Lỗi gặp khi chơi trong Editor (bảng Lỗi Record) — Check all không thấy"));
+            if (f.IsNew && !isFixed && r.PreviousAt != null) head.Add(Tag("mới", "ai", $"Lần check trước ({r.PreviousAt:dd/MM HH:mm}) chưa có"));
+            if (f.CodeChanged) head.Add(Tag("code đã đổi — có thể đã sửa", "rec-ok", "File code chỗ này đã đổi từ lúc check / lúc Record gặp lỗi"));
             foreach (var cid in f.CaseIds)
             {
                 var caseTitle = r.Cases.FirstOrDefault(c => c.Id == cid)?.Title;
@@ -529,7 +563,7 @@ namespace Titan.TrackingQA
             if (f.Package != null) head.Add(Tag("trong package " + f.Package, "pkg", "Sửa ở package sẽ áp dụng cho mọi game dùng package này"));
             if (f.FromAi) head.Add(Tag("AI phát hiện", "ai"));
             if (f.NotOnDevice != null) head.Add(Tag("người chơi thật không gặp", "ai", f.NotOnDevice));
-            if (f.RecordConfirmed > 0) head.Add(Tag($"Record xác nhận ×{f.RecordConfirmed}", "rec-ok", "Lỗi này đã xảy ra thật khi chơi trong Editor (Record)"));
+            if (f.RecordConfirmed > 0 && f.RecordIssueId == null) head.Add(Tag($"Record xác nhận ×{f.RecordConfirmed}", "rec-ok", "Lỗi này đã xảy ra thật khi chơi trong Editor (Record)"));
             if (f.RecordRefuted != null) head.Add(Tag("Record bác bỏ", "rec-no", f.RecordRefuted));
             else if (f.RecordNotReproduced > 0) head.Add(Tag($"Record không tái hiện ×{f.RecordNotReproduced}", "rec-no", "Record đi qua đúng chỗ code mà không ra lỗi — bằng chứng yếu"));
             if (f.AiVerdict != null) head.Add(Tag(f.AiVerdict switch { "confirmed" => "AI xác nhận", "rejected" => "AI: báo nhầm", _ => "AI: chưa chắc" }, "ai"));
@@ -538,23 +572,36 @@ namespace Titan.TrackingQA
             var title = Selectable(new Label(f.Title));
             title.AddToClassList("d-title");
             _detail.Add(title);
+            if (isFixed)
+                _detail.Add(Para($"<b>Đã sửa so với lần check trước</b> ({r.PreviousAt:dd/MM HH:mm}): lần check đó có mục này, lần này không còn thấy — code đã sửa hoặc đã đổi chỗ. Nội dung bên dưới là của lần check trước.", "detail-text"));
+            if (f.CodeChanged)
+                _detail.Add(Para(f.RecordIssueId != null
+                    ? "File code chỗ bắn đã đổi từ lần Record gặp lỗi — có thể đã sửa. Chơi lại các bước ở tab Tái hiện để kiểm."
+                    : "File code của mục này đã đổi từ lúc check — có thể đã sửa. Bấm Check all để kiểm lại.", "detail-text"));
             if (f.NotOnDevice != null)
                 _detail.Add(Para("<b>Đã ẩn — người chơi thật (bản release trên điện thoại) không gặp:</b> " + f.NotOnDevice + ". Không tính vào số lỗi.", "detail-text"));
-            if (f.RecordNote != null)
+            if (f.RecordIssueId != null) RecordIssueBox(f);
+            else if (f.RecordNote != null)
             {
                 var box = new VisualElement();
                 box.AddToClassList("rec-box");
                 box.Add(Para("<b>Record:</b> " + f.RecordNote + (f.RecordRefuted != null ? " → Check all đoán sai ở mục này, không tính là lỗi." : "")));
                 if (f.RecordRefuted != null && f.Accepted == null)
-                    box.Add(new Button(() => QaRunner.Accept(f, "Record bác bỏ: " + f.RecordRefuted))
+                    box.Add(new Button(() =>
                     {
-                        text = "Xác nhận báo nhầm (lưu Đúng thiết kế)",
-                        tooltip = "Lưu làm ngoại lệ của game này — các lần Check all sau không báo lại mục này",
+                        _acceptingKey = f.StableKey();
+                        _acceptKind = "false_positive";
+                        _acceptPrefill = "Record bác bỏ: " + f.RecordRefuted;
+                        ShowDetail(f);
+                    })
+                    {
+                        text = "Xác nhận Check all báo nhầm…",
+                        tooltip = "Lưu làm ngoại lệ của game này kèm lý do Check all sai (để học, sửa luật) — các lần Check all sau không báo lại mục này",
                     });
                 _detail.Add(box);
             }
 
-            AcceptBox(f);
+            if (!isFixed) AcceptBox(f);
 
             // 2 tab
             var tabs = Row("tabs");
@@ -712,40 +759,79 @@ namespace Titan.TrackingQA
             {
                 var box = new VisualElement();
                 box.AddToClassList("accepted-box");
-                box.Add(Selectable(new Label($"<b>Đúng thiết kế của game này</b> — lý do: {a.Reason}" +
+                box.Add(Selectable(new Label((a.FalsePositive ? $"<b>Check all báo nhầm</b> — vì: {GameData.CauseLabel(a.Cause)} · {a.Reason}" : $"<b>Đúng thiết kế của game này</b> — lý do: {a.Reason}") +
                                              (a.By != null ? $" · {a.By}" : "") + (a.At is { } at ? $" · {at:dd/MM/yyyy}" : "") +
                                              (a.Pending ? " · <i>mới lưu trên máy, chưa gửi lên kho chung</i>" : ""))));
                 box.Add(new Button(() => QaRunner.Unaccept(f)) { text = "Bỏ chấp nhận" });
                 _detail.Add(box);
                 return;
             }
-            if (f.Category == FindingCategory.OutOfPlan) return;
-
             var key = f.StableKey();
             if (_acceptingKey != key)
             {
-                var b = new Button(() => { _acceptingKey = key; ShowDetail(f); })
+                var row = Row("accept-btns");
+                row.style.flexWrap = Wrap.Wrap;
+                void Open(string kind) { _acceptingKey = key; _acceptKind = kind; _acceptPrefill = null; ShowDetail(f); }
+                if (f.Category != FindingCategory.OutOfPlan)
+                    row.Add(new Button(() => Open("design"))
+                    {
+                        text = "Đúng thiết kế…",
+                        tooltip = "Đánh dấu mục này là đúng thiết kế của game này — lần sau không tính là lỗi (ghi kèm lý do).",
+                    });
+                if (f.RecordIssueId == null)
+                    row.Add(new Button(() => Open("false_positive"))
+                    {
+                        text = "Check all báo nhầm…",
+                        tooltip = "Check all đoán sai (code rác, giá trị cấu hình Firebase…) — lưu ngoại lệ kèm lý do để học, sửa luật.",
+                    });
+                row.Add(new Button(() => Open("case"))
                 {
-                    text = "Đúng thiết kế…",
-                    tooltip = "Đánh dấu mục này là đúng thiết kế của game này — lần sau không tính là lỗi (ghi kèm lý do).",
-                };
-                b.AddToClassList("accept-btn");
-                _detail.Add(b);
+                    text = "Lưu thành case G-xxx…",
+                    tooltip = "Lưu thành case riêng của game — các lần Check all / Record sau gắn mã case này; sau có thể nâng thành case chung TC.",
+                });
+                foreach (var b in row.Children()) b.AddToClassList("accept-btn");
+                _detail.Add(row);
                 return;
             }
 
             var form = new VisualElement();
             form.AddToClassList("accept-form");
-            form.Add(new Label("Vì sao đây là đúng thiết kế của game? (vd: game cố ý bắn win=3 khi thua Golden Tiles)"));
-            var tf = new TextField { multiline = true };
+            TextField? title = null;
+            PopupField<string>? cause = null;
+            if (_acceptKind == "case")
+            {
+                form.Add(new Label($"Lưu thành case riêng của game ({GameData.NextCaseId(r.GameId)}) — điều phải đúng:"));
+                title = new TextField { multiline = true, value = f.Title };
+                title.AddToClassList("reason");
+                form.Add(title);
+                form.Add(new Label("Vì sao quan trọng (không bắt buộc):"));
+            }
+            else if (_acceptKind == "false_positive")
+            {
+                form.Add(new Label("Check all báo nhầm vì:"));
+                cause = new PopupField<string>(GameData.FalsePositiveCauses.Select(c => c.Label).ToList(), 0);
+                form.Add(cause);
+                form.Add(new Label("Ghi chú (bằng chứng, vd biến Remote Config nào, hàm nào không dùng):"));
+            }
+            else form.Add(new Label("Vì sao đây là đúng thiết kế của game? (vd: game cố ý bắn win=3 khi thua Golden Tiles)"));
+            var tf = new TextField { multiline = true, value = _acceptPrefill ?? "" };
             tf.AddToClassList("reason");
             form.Add(tf);
             var btns = Row("accept-btns");
             var save = new Button(() =>
             {
-                if (string.IsNullOrWhiteSpace(tf.value)) return;
+                if (_acceptKind == "case")
+                {
+                    if (string.IsNullOrWhiteSpace(title!.value)) return;
+                    _acceptingKey = null;
+                    var id = QaRunner.SaveCase(f, title.value, tf.value);
+                    if (id != null) Debug.Log($"[Tracking QA] Đã lưu case {id} cho game {r.GameId}");
+                    return;
+                }
+                if (string.IsNullOrWhiteSpace(tf.value) && cause == null) return;
                 _acceptingKey = null;
-                QaRunner.Accept(f, tf.value);
+                if (cause != null) QaRunner.Accept(f, string.IsNullOrWhiteSpace(tf.value) ? cause.value : tf.value, "false_positive", GameData.FalsePositiveCauses[cause.index].Id);
+                else QaRunner.Accept(f, tf.value);
             }) { text = "Lưu" };
             save.AddToClassList("primary");
             btns.Add(save);
@@ -753,7 +839,33 @@ namespace Titan.TrackingQA
             form.Add(btns);
             form.Add(Muted("Lưu trên máy này, chỉ cho game này. Gửi lên kho chung cho cả team sẽ có ở bản sau."));
             _detail.Add(form);
-            tf.schedule.Execute(() => tf.Focus());
+            var focus = title ?? tf;
+            focus.schedule.Execute(() => focus.Focus());
+        }
+
+        /// <summary>Khung lỗi Record trong chi tiết: trạng thái, số lần gặp, nút Đã sửa / Bỏ qua / xem trong cửa sổ Record.</summary>
+        void RecordIssueBox(Finding f)
+        {
+            var it = RecordController.Issues.Items.FirstOrDefault(x => x.Id == f.RecordIssueId);
+            var box = new VisualElement();
+            box.AddToClassList("rec-box");
+            box.Add(Para($"<b>Lỗi Record {f.RecordIssueId}</b> · {f.RecordStatus} — gặp khi chơi trong Editor, Check all không thấy." + (it?.StatusNote != null ? " " + it.StatusNote : "")));
+            if (it != null && f.Accepted == null)
+            {
+                var btns = Row("accept-btns");
+                btns.style.flexWrap = Wrap.Wrap;
+                var fixedBtn = new Button(() => QaRunner.SetRecordStatus(it.Id, RecordIssueStatus.Fixed))
+                {
+                    text = it.Status == RecordIssueStatus.MaybeFixed ? "Xác nhận đã sửa" : "Đã sửa",
+                    tooltip = "Đóng lỗi. Gặp lại sau này → tự mở lại (Gặp lại).",
+                };
+                if (it.Status == RecordIssueStatus.MaybeFixed) fixedBtn.AddToClassList("primary");
+                btns.Add(fixedBtn);
+                btns.Add(new Button(() => QaRunner.SetRecordStatus(it.Id, RecordIssueStatus.Ignored)) { text = "Bỏ qua", tooltip = "Đóng lỗi, gặp lại không mở lại (chỉ đếm số lần)." });
+                btns.Add(new Button(() => RecordWindow.ShowIssue(it.Id)) { text = "Xem trong Record", tooltip = "Số lần gặp, các phiên, mở đúng chỗ trong dòng thời gian" });
+                box.Add(btns);
+            }
+            _detail.Add(box);
         }
 
         /// <summary>Tab "Lý do trong code": vì sao + đường đi từ thao tác người chơi tới chỗ bắn + vị trí liên quan.</summary>

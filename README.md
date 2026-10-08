@@ -23,6 +23,11 @@ Chọn file tracking (Excel), bấm **Check all** (chạy ngầm ~30s, Editor v�
 - Danh sách mục bên trái (lọc theo nhóm Lỗi / Nghi ngờ / Thiếu / Lỗi doc / Ngoài plan, tìm theo event / file); bên phải là chi tiết với 2 tab **Lý do trong code** và **Tái hiện**.
 - Bấm vị trí `File.cs:123` để mở đúng dòng trong IDE; prefab / scene thì được chọn trong Project.
 - **Đúng thiết kế…**: đánh dấu ngoại lệ riêng của game (ghi lý do) — lần sau không tính là lỗi; xem lại / bỏ ở bộ lọc "Đã chấp nhận".
+- **Check all báo nhầm…**: Check all đoán sai (code rác / không dùng, phụ thuộc Remote Config trên Firebase, lần sai luồng, chỉ có trong Editor…) — chọn lý do + ghi chú, lưu làm ngoại lệ của game; lý do được giữ lại để học, sửa luật.
+- **Lưu thành case G-xxx…**: lưu mục thành case riêng của game (`games/<bundle id>/cases/G-xxx.json`, trên máy) — các lần Check all / Record sau gắn mã case này; sau có thể nâng thành case chung TC.
+- **So với lần check trước** (cùng doc): mục mới có nhãn "mới"; chip **Đã sửa so với lần trước** liệt kê mục lần trước còn mà lần này không thấy.
+- **Code đã đổi**: file code của mục đổi từ lúc check (băm nội dung file) → nhãn "code đã đổi — có thể đã sửa", bấm Check all để kiểm lại.
+- Lỗi không tự mất: chỉ rời danh sách khi Check all chạy lại không còn thấy (vào "Đã sửa so với lần trước"), khi lưu ngoại lệ, khi Record bác bỏ (bộ lọc "Record bác bỏ"), hoặc khi chỉ gặp trong Editor / cheat (ẩn, xem lại được).
 - **Chạy tiếp điểm mù**: phân tích tiếp từ chỗ bị dừng do giới hạn (không chạy lại từ đầu).
 - **Mở báo cáo HTML** để gửi người khác.
 
@@ -36,6 +41,12 @@ Bấm **Play** là bắt đầu ghi (tắt được bằng "Tự Record khi Play
 - Lỗi Check all đã báo (cùng lỗi, đường gọi đi qua đúng chỗ code) hiện xám "đã biết", không báo lại.
 - Đối chiếu với Check all (cập nhật vào cửa sổ CheckAll, giữ qua các lần Check all — `UserSettings/TrackingQA/record-feedback.json`): **xác nhận** (Nghi ngờ → Lỗi), **bác bỏ** (Check all đoán sai, không tính; nút "Xác nhận báo nhầm" lưu thành ngoại lệ), **không tái hiện** (ghi chú).
 - Mỗi lần Play là 1 phiên, tự lưu dần vào `UserSettings/TrackingQA/record/` (giữ 50 phiên), xem lại được.
+- Kiểm thêm: về Home (bấm nút Home / `level_end` mang giá trị "về Home") mà chưa bấm vào chơi đã bắn `level_start` → lượt ma (TC-010).
+- **Lỗi tổng hợp** (bảng Lỗi Record, `UserSettings/TrackingQA/record-issues.json`): lỗi mới (Check all chưa báo) cộng dồn qua mọi phiên — mã `R001…`, số lần gặp, số phiên, các bước bấm trước lần gặp đầu, mở đúng chỗ trong dòng thời gian. Trạng thái:
+  - **Mới** → đi lại đúng chỗ đó (cùng đường gọi, cùng nút) 2 lần không còn lỗi → **Đã sửa?** (chưa đóng) → QA bấm **Xác nhận đã sửa**;
+  - đã đóng / Đã sửa? mà gặp lại → **Gặp lại**; **Bỏ qua** thì gặp lại chỉ đếm số lần;
+  - file code chỗ bắn đổi → nhãn "code đã đổi — có thể đã sửa".
+  Lỗi Record còn mở cũng hiện trong cửa sổ CheckAll (chip **Chỉ lỗi Record**) và tính vào kết quả **Theo case**; Đúng thiết kế / lưu case G-xxx làm được ở cả 2 cửa sổ.
 - Trong Editor không có: quảng cáo thật, `screen_view` tự động, param Firebase tự thêm (`firebase_*`, `ga_session_*`, `fps`).
 
 Báo cáo Check all gần nhất lưu ở `Library/TrackingQA/last-report.json` (mở lại Unity vẫn xem được); chỉnh sửa trên máy (ngoại lệ, chỉnh doc) ở `UserSettings/TrackingQA/` — không vào git của game.
@@ -60,5 +71,5 @@ Lõi phân tích và kho kiến thức được phát triển + kiểm thử ở
 4. ✅ Kho case TC-xxx (`Knowledge/common/cases/`, xem `docs/kho-case.md`): mỗi lỗi ghi mã case, chế độ xem **Theo case**, case riêng game `G-xxx`
 5. ✅ Log giả lập theo kịch bản (chế độ **Kịch bản**): thắng / thua / chơi lại / về Home / thoát app / hồi sinh + kịch bản nhiều bước (`Knowledge/common/scenarios.json`)
 6. ✅ TC-035: đổi tài nguyên phải có `resource_update` · lọc lỗi chỉ gặp trong Editor / bản debug / nút cheat
-7. ⏳ Record khi chơi trong Editor — ✅ R1 (v0.2.0): nghe event, kiểm theo doc, bỏ qua lỗi đã biết, lưu phiên · ✅ R2 (v0.3.0): ghi bước bấm + kiểm theo kho case + đối chiếu Check all · R3: bảng lỗi gộp + lưu case G-xxx · R4: so với log giả lập
+7. ⏳ Record khi chơi trong Editor — ✅ R1 (v0.2.0): nghe event, kiểm theo doc, bỏ qua lỗi đã biết, lưu phiên · ✅ R2 (v0.3.0): ghi bước bấm + kiểm theo kho case + đối chiếu Check all · ✅ R3 (v0.4.0): bảng Lỗi Record gộp qua phiên, so với lần check trước, code đã đổi, lưu case G-xxx, Check all báo nhầm có lý do · R4: so với log giả lập
 8. Gửi case lên kho chung (PR)
