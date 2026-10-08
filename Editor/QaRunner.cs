@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TrackingChecker.Core;
 using TrackingChecker.Core.Analysis;
+using TrackingChecker.Core.Live;
 using TrackingChecker.Core.Report;
 using TrackingChecker.Core.Rules;
 using UnityEditor;
@@ -104,6 +105,7 @@ namespace Titan.TrackingQA
             {
                 Report = JsonSerializer.Deserialize<CheckReport>(File.ReadAllText(LastReportFile));
                 if (Report != null) GameData.ApplyExceptions(Report); // ngoại lệ có thể đã đổi từ lần trước
+                if (Report != null) RecordFeedback.Apply(Report, RecordFeedback.Load(RecordController.FeedbackPath));
                 Version++;
             }
             catch (Exception e) { Debug.LogWarning("[Tracking QA] Không đọc được báo cáo cũ: " + e.Message); }
@@ -156,6 +158,9 @@ namespace Titan.TrackingQA
                     var r = result(await work(ct));
                     Post(() =>
                     {
+                        // Ghép kết quả Record (xác nhận / bác bỏ / không tái hiện) — lưu theo mã ổn định nên giữ qua các lần Check all
+                        try { RecordFeedback.Apply(r, RecordFeedback.Load(RecordController.FeedbackPath)); }
+                        catch (Exception e) { Debug.LogWarning("[Tracking QA] Không ghép được kết quả Record: " + e.Message); }
                         Report = r;
                         Version++;
                         Save();
@@ -185,6 +190,16 @@ namespace Titan.TrackingQA
         {
             int N(FindingCategory c) => r.Findings.Count(f => f.Category == c && f.IsOpen);
             return $"{N(FindingCategory.CodeError)} lỗi · {N(FindingCategory.Suspect)} nghi ngờ · {N(FindingCategory.Missing)} thiếu · {N(FindingCategory.DocIssue)} lỗi doc · {N(FindingCategory.OutOfPlan)} ngoài plan";
+        }
+
+        /// <summary>Record có kết quả đối chiếu mới → cập nhật báo cáo đang xem (cửa sổ CheckAll vẽ lại).</summary>
+        public static void ApplyRecordFeedback(RecordFeedback fb)
+        {
+            if (Report == null) return;
+            RecordFeedback.Apply(Report, fb);
+            Version++;
+            Save();
+            Changed?.Invoke();
         }
 
         // ------------------------------------------------------------------ Đúng thiết kế

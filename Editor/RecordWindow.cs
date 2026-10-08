@@ -24,6 +24,8 @@ namespace Titan.TrackingQA
         int _rendered = -1;
         int? _selectedSeq;
         readonly List<RecordedEvent> _items = new List<RecordedEvent>();
+        /// <summary>Bước bấm đại diện cho 1 chuỗi bấm liên tiếp cùng kiểu (vd Tile_38, Tile_40… → "×12") — Seq → các bước trong chuỗi.</summary>
+        readonly Dictionary<int, List<RecordedEvent>> _runs = new Dictionary<int, List<RecordedEvent>>();
 
         Label _head = null!, _status = null!, _notice = null!, _counts = null!;
         Toggle _auto = null!;
@@ -172,10 +174,24 @@ namespace Titan.TrackingQA
             if (s != null)
             {
                 var q = _search.Trim();
-                _items.AddRange(s.Events.Where(e => !_onlyIssues || e.Issues.Any(i => i.KnownFindingId == null))
-                    .Where(e => q.Length == 0 || Has(e.Name, q) || e.Params.Any(p => Has(p.Key, q) || Has(p.Value, q)) || e.Issues.Any(i => Has(i.Text, q))));
+                var shown = s.Events.Where(e => !_onlyIssues || (!e.IsStep && e.Issues.Any(i => i.KnownFindingId == null)))
+                    .Where(e => q.Length == 0 || Has(e.Name, q) || Has(e.Context, q) || e.Params.Any(p => Has(p.Key, q) || Has(p.Value, q)) || e.Issues.Any(i => Has(i.Text, q)));
+                // Gộp các lần bấm liên tiếp cùng kiểu, cùng màn (tên chỉ khác số) thành 1 dòng
+                _runs.Clear();
+                RecordedEvent? head = null;
+                foreach (var e in shown)
+                {
+                    if (head != null && e.Kind == "click" && head.Kind == "click" && e.Context == head.Context && Pattern(e.Name) == Pattern(head.Name))
+                    {
+                        if (!_runs.TryGetValue(head.Seq, out var run)) _runs[head.Seq] = run = new List<RecordedEvent> { head };
+                        run.Add(e);
+                        continue;
+                    }
+                    _items.Add(e);
+                    head = e.Kind == "click" ? e : null;
+                }
                 int known = s.Events.Sum(e => e.Issues.Count(i => i.KnownFindingId != null));
-                _counts.text = $"{s.Events.Count} event · {s.ErrorCount} lỗi mới · {s.WarnCount} cần xem" + (known > 0 ? $" · {known} đã biết (Check all)" : "");
+                _counts.text = $"{s.Events.Count(e => !e.IsStep)} event · {s.Events.Count(e => e.Kind == "click")} lần bấm · {s.ErrorCount} lỗi mới · {s.WarnCount} cần xem" + (known > 0 ? $" · {known} đã biết (Check all)" : "");
             }
             else _counts.text = "";
             _list.RefreshItems();
@@ -190,6 +206,8 @@ namespace Titan.TrackingQA
         }
 
         static bool Has(string? s, string q) => s != null && s.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        static string Pattern(string name) => System.Text.RegularExpressions.Regex.Replace(name, @"\d+", "#");
 
         // ------------------------------------------------------------------ danh sách
 
@@ -219,6 +237,20 @@ namespace Titan.TrackingQA
         void BindRow(VisualElement row, int i)
         {
             var e = _items[i];
+            if (e.IsStep)
+            {
+                var sp = row.Q<Label>(className: "pill");
+                foreach (var c in Pills) sp.RemoveFromClassList(c);
+                sp.text = e.Kind == "click" ? "▶ Bấm" : "▶ Scene";
+                sp.AddToClassList("info");
+                row.Q<Label>(className: "fid").text = $"{e.Time:HH:mm:ss}";
+                row.Q<Label>(className: "subj").text = _runs.TryGetValue(e.Seq, out var run) ? $"{e.Name} … ×{run.Count}" : e.Name;
+                row.Q<Label>(className: "row-title").text = e.Context ?? e.Path ?? "";
+                row.tooltip = e.Path ?? e.Name;
+                row.AddToClassList("step-row");
+                return;
+            }
+            row.RemoveFromClassList("step-row");
             var newErr = e.Issues.Any(x => x.Level == "error" && x.KnownFindingId == null);
             var newWarn = e.Issues.Any(x => x.Level == "warn" && x.KnownFindingId == null);
             var known = e.Issues.Count > 0 && e.Issues.All(x => x.KnownFindingId != null);
@@ -237,6 +269,23 @@ namespace Titan.TrackingQA
         void ShowEvent(RecordedEvent e)
         {
             _detail.Clear();
+            if (e.IsStep)
+            {
+                var t = new Label((e.Kind == "click" ? "Bấm " : "Vào scene ") + e.Name);
+                t.AddToClassList("d-title");
+                _detail.Add(t);
+                _detail.Add(Para($"{e.Time:HH:mm:ss.fff} · {e.T:F2}s · frame {e.Frame}"));
+                if (e.Context != null) _detail.Add(Para("<b>Trong:</b> " + e.Context));
+                if (e.Path != null) _detail.Add(Para("<b>Đường dẫn:</b> " + e.Path));
+                if (_runs.TryGetValue(e.Seq, out var steps))
+                    _detail.Add(Para($"<b>Bấm liên tiếp {steps.Count} lần:</b> " + string.Join(", ", steps.Select(x => x.Name))));
+                var last = _runs.TryGetValue(e.Seq, out var rs) ? rs.Last() : e;
+                var after = Session?.Events.SkipWhile(x => x != last).Skip(1).TakeWhile(x => !x.IsStep).ToList() ?? new List<RecordedEvent>();
+                _detail.Add(Section(after.Count > 0 ? $"Ngay sau đó ({after.Count})" : "Không có tracking nào ngay sau thao tác này"));
+                foreach (var x in after) _detail.Add(Para($"#{x.Seq}  <b>{x.Name}</b>  " + string.Join(" · ", x.Params.Take(5).Select(p => $"{p.Key}={p.Value}"))));
+                _detailScroll.scrollOffset = Vector2.zero;
+                return;
+            }
             var head = Row("d-head");
             head.Add(Tag(e.Kind));
             head.Add(Tag($"#{e.Seq}"));

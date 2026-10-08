@@ -162,3 +162,7 @@ Button.primary:disabled { background-color: var(--unity-colors-button-background
 .rec-status.live { color: var(--c-err); }
 .rec-sessions { min-width: 220px; }
 .sc-check.known { opacity: 0.55; }
+.step-row { background-color: rgba(76,143,245,0.08); }
+.tag.rec-ok { border-color: var(--c-acc); color: var(--c-acc); }
+.tag.rec-no { border-color: var(--c-info); color: var(--c-info); }
+.rec-box { padding: 6px 8px; margin: 4px 0 6px 0; border-left-width: 3px; border-color: #4c8ff5; background-color: rgba(76,143,245,0.08); }

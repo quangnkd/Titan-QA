@@ -23,6 +23,22 @@ namespace Titan.TrackingQA
         public DateTime Time;
         /// <summary>Khung gọi (file đầy đủ, dòng, lớp, hàm) từ chỗ game gọi Titan trở ra.</summary>
         public List<(string File, int Line, string Type, string Method)> Stack = new List<(string, int, string, string)>();
+        /// <summary>Xảy ra trong lúc xử lý 1 cú bấm nút / toggle UI (đường gọi đi qua UnityEngine.UI.Button / Toggle).</summary>
+        public bool FromClick;
+    }
+
+    /// <summary>1 bước chơi: bấm nút / toggle UI, hoặc vào scene.</summary>
+    public sealed class RawStep
+    {
+        /// <summary>click / scene.</summary>
+        public string Kind = "click";
+        public string Name = "";
+        /// <summary>Popup / màn chứa nút (vd OutOfSpacePanel).</summary>
+        public string? Context;
+        public string? Path;
+        public float RealTime;
+        public int Frame;
+        public DateTime Time;
     }
 
     /// <summary>
@@ -37,10 +53,19 @@ namespace Titan.TrackingQA
         /// <summary>Gọi trên main thread mỗi khi nghe được 1 lời gọi.</summary>
         public static event Action<RawTrackingCall>? Received;
         public static event Action? PlayStarted;
+        public static readonly List<RawStep> Steps = new List<RawStep>();
+        public static event Action<RawStep>? StepReceived;
+
+        internal static void PushStep(RawStep s)
+        {
+            Steps.Add(s);
+            try { StepReceived?.Invoke(s); } catch (Exception e) { UnityEngine.Debug.LogException(e); }
+        }
 
         internal static void Begin()
         {
             Calls.Clear();
+            Steps.Clear();
             Status = "";
             PlayStarted?.Invoke();
         }
@@ -75,6 +100,7 @@ namespace Titan.TrackingQA
                 n += Register(type, instance, "RegisterTrackPropertyService", nameof(OnProperty)) ? 1 : 0;
                 n += Register(type, instance, "RegisterTrackItemsService", nameof(OnItems)) ? 1 : 0;
                 RecordBus.Status = n == 3 ? "Đang ghi" : $"Đang ghi (chỉ gắn được {n}/3 kênh tracking của Titan)";
+                UiWatcher.Create();
             }
             catch (Exception e)
             {
@@ -120,11 +146,14 @@ namespace Titan.TrackingQA
             {
                 var file = f.GetFileName();
                 var m = f.GetMethod();
+                if (m?.DeclaringType?.FullName is "UnityEngine.UI.Button" or "UnityEngine.UI.Toggle") c.FromClick = true;
                 if (string.IsNullOrEmpty(file) || m == null) continue;
                 var t = m.DeclaringType;
-                c.Stack.Add((file!, f.GetFileLineNumber(), t?.FullName ?? "", m.Name));
-                if (c.Stack.Count >= 16) break;
+                if (c.Stack.Count < 40) c.Stack.Add((file!, f.GetFileLineNumber(), t?.FullName ?? "", m.Name));
+                if (c.Stack.Count >= 16 && c.FromClick) break;
+                if (c.Stack.Count >= 40) break;
             }
+            if (c.Stack.Count > 16) c.Stack.RemoveRange(16, c.Stack.Count - 16);
             return c;
         }
 
@@ -143,6 +172,102 @@ namespace Titan.TrackingQA
                 res.Add(new KeyValuePair<string, object?>(key, value));
             }
             return res;
+        }
+    }
+
+    /// <summary>
+    /// Ghi bước chơi: lúc Play, cứ ~0,3 giây tìm nút / toggle UI đang có (kể cả popup mới mở) và gắn thêm 1 người nghe vào sự kiện bấm;
+    /// ghi cả vào scene. Chỉ gắn trong bộ nhớ khi Play (không sửa prefab / scene / code, dừng Play là mất). Dùng reflection để
+    /// game không có uGUI vẫn biên dịch được.
+    /// </summary>
+    sealed class UiWatcher : MonoBehaviour
+    {
+        /// <summary>Tên GameObject chung chung, không nói được đang ở màn nào.</summary>
+        static readonly System.Text.RegularExpressions.Regex GenericName = new System.Text.RegularExpressions.Regex(
+            @"^(Panel|Canvas|Content|Root|Container|Bg|Background|Popup|Frame|Group|Holder|Layout|SafeArea|Safe ?Area|Main|UI|Image|Viewport|Scroll ?View|Body|Top|Bottom|Header|Footer|Center|Middle|Board|Grid|Buttons?)$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        Type? _button, _toggle;
+        readonly HashSet<int> _hooked = new HashSet<int>();
+        float _next;
+
+        internal static void Create()
+        {
+            var go = new GameObject("[TrackingQA Record]") { hideFlags = HideFlags.HideAndDontSave };
+            DontDestroyOnLoad(go);
+            go.AddComponent<UiWatcher>();
+        }
+
+        void Awake()
+        {
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                _button ??= a.GetType("UnityEngine.UI.Button", false);
+                _toggle ??= a.GetType("UnityEngine.UI.Toggle", false);
+            }
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnScene;
+        }
+
+        void OnDestroy() => UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnScene;
+
+        void OnScene(UnityEngine.SceneManagement.Scene s, UnityEngine.SceneManagement.LoadSceneMode mode) =>
+            RecordBus.PushStep(new RawStep { Kind = "scene", Name = s.name, Context = mode == UnityEngine.SceneManagement.LoadSceneMode.Additive ? "thêm (additive)" : null,
+                RealTime = Time.realtimeSinceStartup, Frame = Time.frameCount, Time = DateTime.Now });
+
+        void Update()
+        {
+            if (Time.unscaledTime < _next) return;
+            _next = Time.unscaledTime + 0.3f;
+            if (_button != null)
+                foreach (var o in FindObjectsByType(_button, FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                    if (o is Component c && _hooked.Add(c.GetInstanceID()) && Member(c, "onClick") is UnityEngine.Events.UnityEvent ev)
+                        ev.AddListener(() => Clicked(c, null));
+            if (_toggle != null)
+                foreach (var o in FindObjectsByType(_toggle, FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                    if (o is Component c && _hooked.Add(c.GetInstanceID()) && Member(c, "onValueChanged") is UnityEngine.Events.UnityEvent<bool> ev)
+                        ev.AddListener(on => Clicked(c, on ? "bật" : "tắt"));
+        }
+
+        /// <summary>Tên script của game (không phải Unity / uGUI / TextMeshPro / package QA) gắn trên GameObject.</summary>
+        static string? GameScript(Transform t)
+        {
+            foreach (var mb in t.GetComponents<MonoBehaviour>())
+            {
+                if (mb == null) continue;
+                var type = mb.GetType();
+                var asm = type.Assembly.GetName().Name ?? "";
+                if (asm.StartsWith("UnityEngine") || asm.StartsWith("Unity.") || asm.StartsWith("TMPro") || asm.StartsWith("Titan.TrackingQA") || asm.StartsWith("DOTween")) continue;
+                if (GenericName.IsMatch(type.Name)) continue;
+                return type.Name;
+            }
+            return null;
+        }
+
+        static object? Member(Component c, string name)
+        {
+            var t = c.GetType();
+            return t.GetProperty(name)?.GetValue(c) ?? t.GetField(name)?.GetValue(c);
+        }
+
+        static void Clicked(Component c, string? state)
+        {
+            if (c == null) return;
+            var tr = c.transform;
+            string? byScript = null, byName = null;
+            var path = tr.name;
+            for (var p = tr.parent; p != null; p = p.parent)
+            {
+                path = p.name + "/" + path;
+                // Ưu tiên tên script của game gắn trên popup / màn (vd OutOfSpacePanel) — ổn định hơn tên GameObject
+                byScript ??= GameScript(p);
+                var clean = System.Text.RegularExpressions.Regex.Replace(p.name, @"\s*\((Clone|\d+)\)", "").Trim();
+                if (byName == null && clean.Length > 0 && !GenericName.IsMatch(clean)) byName = clean;
+            }
+            var context = byScript ?? byName ?? (tr.root != tr ? tr.root.name : null);
+            RecordBus.PushStep(new RawStep
+            {
+                Kind = "click", Name = tr.name + (state != null ? $" → {state}" : ""), Context = context, Path = path,
+                RealTime = Time.realtimeSinceStartup, Frame = Time.frameCount, Time = DateTime.Now,
+            });
         }
     }
 }

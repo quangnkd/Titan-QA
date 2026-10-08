@@ -31,7 +31,10 @@ Chọn file tracking (Excel), bấm **Check all** (chạy ngầm ~30s, Editor v�
 Bấm **Play** là bắt đầu ghi (tắt được bằng "Tự Record khi Play"): package gắn vào `TrackingManager` của Titan như 1 dịch vụ tracking (giống Firebase) trước khi scene đầu chạy — nghe mọi event / user property / items, **không sửa code game hay Titan**, chỉ có trong Editor (assembly `Titan.TrackingQA.Recorder` chỉ biên dịch khi có `UNITY_EDITOR`).
 - Ghi đúng như Firebase nhận (items của `resource_update` → `view_item`).
 - Kiểm ngay theo doc: có trong doc, đủ param, đúng kiểu, giá trị hợp lệ, giới hạn Firebase, param rỗng (Firebase bỏ), property set trước event (TC-009).
+- Ghi bước chơi: tự gắn người nghe vào nút / toggle UI khi Play (chỉ trong bộ nhớ) → "▶ Bấm Button Home (SettingPanel)" đứng trước các event nó gây ra; ghi chuyển scene. Bấm liên tiếp cùng kiểu được gộp ("Tile_38 … ×12").
+- Kiểm theo kho case khi chơi: TC-007 (nút vừa bấm → giá trị đúng hành động), TC-010 (1 level_start ↔ 1 level_end), TC-012, TC-014, TC-015, TC-016, TC-027, event bắn 2 lần liền.
 - Lỗi Check all đã báo (cùng lỗi, đường gọi đi qua đúng chỗ code) hiện xám "đã biết", không báo lại.
+- Đối chiếu với Check all (cập nhật vào cửa sổ CheckAll, giữ qua các lần Check all — `UserSettings/TrackingQA/record-feedback.json`): **xác nhận** (Nghi ngờ → Lỗi), **bác bỏ** (Check all đoán sai, không tính; nút "Xác nhận báo nhầm" lưu thành ngoại lệ), **không tái hiện** (ghi chú).
 - Mỗi lần Play là 1 phiên, tự lưu dần vào `UserSettings/TrackingQA/record/` (giữ 50 phiên), xem lại được.
 - Trong Editor không có: quảng cáo thật, `screen_view` tự động, param Firebase tự thêm (`firebase_*`, `ga_session_*`, `fps`).
 
@@ -57,5 +60,5 @@ Lõi phân tích và kho kiến thức được phát triển + kiểm thử ở
 4. ✅ Kho case TC-xxx (`Knowledge/common/cases/`, xem `docs/kho-case.md`): mỗi lỗi ghi mã case, chế độ xem **Theo case**, case riêng game `G-xxx`
 5. ✅ Log giả lập theo kịch bản (chế độ **Kịch bản**): thắng / thua / chơi lại / về Home / thoát app / hồi sinh + kịch bản nhiều bước (`Knowledge/common/scenarios.json`)
 6. ✅ TC-035: đổi tài nguyên phải có `resource_update` · lọc lỗi chỉ gặp trong Editor / bản debug / nút cheat
-7. ⏳ Record khi chơi trong Editor — ✅ R1 (v0.2.0): nghe event, kiểm theo doc, bỏ qua lỗi đã biết, lưu phiên · R2: ghi bước bấm + kiểm theo kho case · R3: bảng lỗi gộp + lưu case G-xxx · R4: so với log giả lập
+7. ⏳ Record khi chơi trong Editor — ✅ R1 (v0.2.0): nghe event, kiểm theo doc, bỏ qua lỗi đã biết, lưu phiên · ✅ R2 (v0.3.0): ghi bước bấm + kiểm theo kho case + đối chiếu Check all · R3: bảng lỗi gộp + lưu case G-xxx · R4: so với log giả lập
 8. Gửi case lên kho chung (PR)

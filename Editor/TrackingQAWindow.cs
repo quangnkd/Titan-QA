@@ -27,6 +27,7 @@ namespace Titan.TrackingQA
         readonly HashSet<FindingCategory> _cats = new HashSet<FindingCategory>(Cats.Where(c => c != FindingCategory.OutOfPlan));
         bool _showAccepted, _hideRejected = true;
         bool _showNotOnDevice; // mục người chơi thật không gặp (chỉ Editor / bản debug / nút cheat) — ẩn mặc định
+        bool _showRefuted;     // mục Record bác bỏ (Check all đoán sai) — ẩn mặc định
         string _search = "";
         int _tab; // 0 = Lý do trong code, 1 = Tái hiện
         string? _selectedKey;
@@ -312,6 +313,8 @@ namespace Titan.TrackingQA
                 }));
             var acc = r.Findings.Count(f => f.Accepted != null);
             if (acc > 0) _chips.Add(Chip($"Đã chấp nhận · {acc}", "acc", _showAccepted, on => { _showAccepted = on; RebuildList(); }));
+            var refuted = r.Findings.Count(f => f.Accepted == null && f.RecordRefuted != null);
+            if (refuted > 0) _chips.Add(Chip($"Record bác bỏ · {refuted}", "info", _showRefuted, on => { _showRefuted = on; RebuildList(); }));
         }
 
         // Nhóm kết quả case để lọc / tô màu: chỉ mục "Lỗi" (bắn sai) là Vi phạm; Nghi ngờ / Thiếu / Lỗi doc / Ngoài plan xếp dưới
@@ -394,7 +397,7 @@ namespace Titan.TrackingQA
                         .OrderBy(c => CaseEngine.StatusOrder(c.Status)).ThenBy(c => c.Id, StringComparer.Ordinal));
                 else
                     _items.AddRange(r.Findings
-                        .Where(f => f.Accepted != null ? _showAccepted : _cats.Contains(f.Category) && (f.NotOnDevice == null || _showNotOnDevice))
+                        .Where(f => f.Accepted != null ? _showAccepted : f.RecordRefuted != null ? _showRefuted : _cats.Contains(f.Category) && (f.NotOnDevice == null || _showNotOnDevice))
                         .Where(f => !_hideRejected || f.AiVerdict != "rejected" || f.Accepted != null)
                         .Where(f => q.Length == 0 || Matches(f, q))
                         .OrderBy(f => f.Accepted != null ? 2 : f.NotOnDevice != null ? 1 : 0).ThenBy(f => f.Category.Rank()));
@@ -478,10 +481,10 @@ namespace Titan.TrackingQA
                 return;
             }
             var f = (Finding)_items[i];
-            pill.text = f.Accepted != null ? "Đã chấp nhận" : f.NotOnDevice != null ? "Chỉ Editor/cheat" : HtmlReport.CatLabel(f.Category);
-            pill.AddToClassList(f.Accepted != null ? "acc" : f.NotOnDevice != null ? "na" : Cls(f.Category));
+            pill.text = f.Accepted != null ? "Đã chấp nhận" : f.RecordRefuted != null ? "Record bác bỏ" : f.NotOnDevice != null ? "Chỉ Editor/cheat" : HtmlReport.CatLabel(f.Category);
+            pill.AddToClassList(f.Accepted != null ? "acc" : f.RecordRefuted != null || f.NotOnDevice != null ? "na" : Cls(f.Category));
             row.Q<Label>(className: "subj").text = f.Subject;
-            row.Q<Label>(className: "fid").text = f.CaseIds.Count > 0 ? $"{f.Id} · {string.Join(", ", f.CaseIds)}" : f.Id;
+            row.Q<Label>(className: "fid").text = (f.CaseIds.Count > 0 ? $"{f.Id} · {string.Join(", ", f.CaseIds)}" : f.Id) + (f.RecordConfirmed > 0 ? " · Record ✓" : "");
             row.Q<Label>(className: "row-title").text = f.Title;
             row.tooltip = f.Title;
         }
@@ -526,6 +529,9 @@ namespace Titan.TrackingQA
             if (f.Package != null) head.Add(Tag("trong package " + f.Package, "pkg", "Sửa ở package sẽ áp dụng cho mọi game dùng package này"));
             if (f.FromAi) head.Add(Tag("AI phát hiện", "ai"));
             if (f.NotOnDevice != null) head.Add(Tag("người chơi thật không gặp", "ai", f.NotOnDevice));
+            if (f.RecordConfirmed > 0) head.Add(Tag($"Record xác nhận ×{f.RecordConfirmed}", "rec-ok", "Lỗi này đã xảy ra thật khi chơi trong Editor (Record)"));
+            if (f.RecordRefuted != null) head.Add(Tag("Record bác bỏ", "rec-no", f.RecordRefuted));
+            else if (f.RecordNotReproduced > 0) head.Add(Tag($"Record không tái hiện ×{f.RecordNotReproduced}", "rec-no", "Record đi qua đúng chỗ code mà không ra lỗi — bằng chứng yếu"));
             if (f.AiVerdict != null) head.Add(Tag(f.AiVerdict switch { "confirmed" => "AI xác nhận", "rejected" => "AI: báo nhầm", _ => "AI: chưa chắc" }, "ai"));
             _detail.Add(head);
 
@@ -534,6 +540,19 @@ namespace Titan.TrackingQA
             _detail.Add(title);
             if (f.NotOnDevice != null)
                 _detail.Add(Para("<b>Đã ẩn — người chơi thật (bản release trên điện thoại) không gặp:</b> " + f.NotOnDevice + ". Không tính vào số lỗi.", "detail-text"));
+            if (f.RecordNote != null)
+            {
+                var box = new VisualElement();
+                box.AddToClassList("rec-box");
+                box.Add(Para("<b>Record:</b> " + f.RecordNote + (f.RecordRefuted != null ? " → Check all đoán sai ở mục này, không tính là lỗi." : "")));
+                if (f.RecordRefuted != null && f.Accepted == null)
+                    box.Add(new Button(() => QaRunner.Accept(f, "Record bác bỏ: " + f.RecordRefuted))
+                    {
+                        text = "Xác nhận báo nhầm (lưu Đúng thiết kế)",
+                        tooltip = "Lưu làm ngoại lệ của game này — các lần Check all sau không báo lại mục này",
+                    });
+                _detail.Add(box);
+            }
 
             AcceptBox(f);
 
