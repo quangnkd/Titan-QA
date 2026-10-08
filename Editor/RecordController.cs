@@ -117,7 +117,11 @@ namespace Titan.TrackingQA
                     if (_gameId != null && GameData.LoadOverlay(_gameId, doc) is { IsEmpty: false } ov) ov.Apply(spec);
                     _known = QaRunner.Report is { } r && SamePath(r.SpecFile, doc) ? r : null;
                     if (_known == null) Notices.Add("Chưa có Check all cho doc này — lỗi lúc chơi có thể trùng lỗi Check all sẽ báo, và chưa đối chiếu được với Check all.");
-                    else Current.KnownReportAt = _known.CreatedAt;
+                    else
+                    {
+                        Current.KnownReportAt = _known.CreatedAt;
+                        if (_known.Scenarios.Count == 0) Notices.Add("Báo cáo Check all chưa có log giả lập (bản cũ) — bấm Check all lại để so lúc chơi với giả lập.");
+                    }
                     _checker = new LiveChecker(spec, _known);
                     _sequence = new LiveSequence(spec);
                     Current.DocFile = Path.GetFileName(doc);
@@ -195,6 +199,7 @@ namespace Titan.TrackingQA
                     _checker.Check(e, s.Events);
                     _sequence?.Check(e);
                     _checker.MarkKnown(e);
+                    CheatFilter.Mark(e, s.Events); // lỗi do nút / code cheat → ẩn (người chơi thật không gặp)
                 }
                 catch (Exception ex) { Debug.LogWarning("[Tracking QA] Không kiểm được " + e.Name + ": " + ex.Message); }
             }
@@ -284,6 +289,7 @@ namespace Titan.TrackingQA
             Current.EndedAt = DateTime.Now;
             Current.Notes.AddRange(Notices.Where(n => !Current.Notes.Contains(n)));
             if (!string.IsNullOrEmpty(RecordBus.Status) && RecordBus.Status != "Đang ghi") Current.Notes.Add(RecordBus.Status);
+            CompareWithSimulation();
             Save();
             SaveFeedback();
             if (Issues.CommitPending(Current.Id)) _issuesDirty = true;
@@ -310,6 +316,19 @@ namespace Titan.TrackingQA
                 QaRunner.ApplyRecordFeedback(_feedback);
             }
             catch (Exception e) { Debug.LogWarning("[Tracking QA] Không lưu được kết quả đối chiếu Record: " + e.Message); }
+        }
+
+        /// <summary>R4: hết phiên → so từng cú bấm với log giả lập của Check all, cộng vào tab Kịch bản (theo cách làm).</summary>
+        static void CompareWithSimulation()
+        {
+            if (Current == null || _known == null || _known.Scenarios.Count == 0) return;
+            try
+            {
+                _feedback ??= RecordFeedback.Load(FeedbackPath);
+                using var _ = Knowledge.ForGame(_gameId);
+                if (_feedback.ObserveScenarios(ScenarioMatcher.Compare(Current, _known.Scenarios), Current.Id)) _feedbackDirty = true;
+            }
+            catch (Exception e) { Debug.LogWarning("[Tracking QA] Không so được với log giả lập: " + e.Message); }
         }
 
         /// <summary>Lưu bảng Lỗi Record và đưa lỗi còn mở vào cửa sổ CheckAll.</summary>

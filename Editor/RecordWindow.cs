@@ -33,6 +33,8 @@ namespace Titan.TrackingQA
         /// <summary>Bước bấm đại diện cho 1 chuỗi bấm liên tiếp cùng kiểu (vd Tile_38, Tile_40… → "×12") — Seq → các bước trong chuỗi.</summary>
         readonly Dictionary<int, List<RecordedEvent>> _runs = new Dictionary<int, List<RecordedEvent>>();
         Dictionary<string, (GameData.AcceptedEntry E, bool Pending)> _accepted = new Dictionary<string, (GameData.AcceptedEntry, bool)>();
+        /// <summary>R4: kết quả so cú bấm với log giả lập — Seq của bước bấm → kết quả.</summary>
+        readonly Dictionary<int, ScenarioMatch> _sim = new Dictionary<int, ScenarioMatch>();
 
         Label _head = null!, _status = null!, _notice = null!, _counts = null!, _editorOnly = null!;
         Toggle _auto = null!, _onlyToggle = null!, _closedToggle = null!;
@@ -243,7 +245,8 @@ namespace Titan.TrackingQA
             if (s != null)
             {
                 var q = _search.Trim();
-                var shown = s.Events.Where(e => !_onlyIssues || (!e.IsStep && e.Issues.Any(i => i.KnownFindingId == null)))
+                Simulate(s);
+                var shown = s.Events.Where(e => !_onlyIssues || (!e.IsStep && e.Issues.Any(i => i.IsNew)) || (e.Kind == "click" && _sim.TryGetValue(e.Seq, out var sm) && sm.Differs))
                     .Where(e => q.Length == 0 || Has(e.Name, q) || Has(e.Context, q) || e.Params.Any(p => Has(p.Key, q) || Has(p.Value, q)) || e.Issues.Any(i => Has(i.Text, q)));
                 // Gộp các lần bấm liên tiếp cùng kiểu, cùng màn (tên chỉ khác số) thành 1 dòng
                 _runs.Clear();
@@ -260,7 +263,11 @@ namespace Titan.TrackingQA
                     head = e.Kind == "click" ? e : null;
                 }
                 int known = s.Events.Sum(e => e.Issues.Count(i => i.KnownFindingId != null));
-                _counts.text = $"{s.Events.Count(e => !e.IsStep)} event · {s.Events.Count(e => e.Kind == "click")} lần bấm · {s.ErrorCount} lỗi mới · {s.WarnCount} cần xem" + (known > 0 ? $" · {known} đã biết (Check all)" : "");
+                int cheat = s.Events.Sum(e => e.Issues.Count(i => i.KnownFindingId == null && i.Cheat != null));
+                int diff = _sim.Values.Count(m => m.Differs);
+                _counts.text = $"{s.Events.Count(e => !e.IsStep)} event · {s.Events.Count(e => e.Kind == "click")} lần bấm · {s.ErrorCount} lỗi mới · {s.WarnCount} cần xem"
+                    + (known > 0 ? $" · {known} đã biết (Check all)" : "") + (cheat > 0 ? $" · {cheat} do cheat (ẩn)" : "")
+                    + (_sim.Count > 0 ? $" · {diff}/{_sim.Count} lần bấm lệch giả lập" : "");
             }
             else _counts.text = "";
             _list.RefreshItems();
@@ -360,7 +367,7 @@ namespace Titan.TrackingQA
                 var acc = IsAccepted(it);
                 pl.text = acc ? "Đúng thiết kế" : RecordIssueLog.StatusLabel(it.Status);
                 pl.AddToClassList(acc ? "acc" : IssuePill(it.Status));
-                row.Q<Label>(className: "fid").text = $"{it.Id} · ×{it.Count} · {it.SessionCount} phiên" + (it.CodeChanged ? " · code đã đổi" : "");
+                row.Q<Label>(className: "fid").text = $"{it.Id} · ×{it.Count} · {it.SessionCount} phiên" + (it.Stack.Count > 0 ? " · " + it.Stack[0].Member : "") + (it.CodeChanged ? " · code đã đổi" : "");
                 row.Q<Label>(className: "subj").text = it.Subject;
                 row.Q<Label>(className: "row-title").text = it.Text;
                 row.tooltip = it.Text;
@@ -369,19 +376,20 @@ namespace Titan.TrackingQA
             var e = (RecordedEvent)_items[i];
             if (e.IsStep)
             {
-                pl.text = e.Kind == "click" ? "▶ Bấm" : "▶ Scene";
-                pl.AddToClassList("info");
+                var sim = _sim.TryGetValue(e.Seq, out var sm) ? sm : null;
+                pl.text = e.Kind == "click" ? (sim?.Differs == true ? "▶ Bấm ≠" : "▶ Bấm") : "▶ Scene";
+                pl.AddToClassList(sim?.Differs == true ? "warn" : "info");
                 row.Q<Label>(className: "fid").text = $"{e.Time:HH:mm:ss}";
                 row.Q<Label>(className: "subj").text = _runs.TryGetValue(e.Seq, out var run) ? $"{e.Name} … ×{run.Count}" : e.Name;
-                row.Q<Label>(className: "row-title").text = e.Context ?? e.Path ?? "";
+                row.Q<Label>(className: "row-title").text = (sim != null ? sim.Verdict + " · " : "") + (e.Context ?? e.Path ?? "");
                 row.tooltip = e.Path ?? e.Name;
                 row.AddToClassList("step-row");
                 return;
             }
-            var newErr = e.Issues.Any(x => x.Level == "error" && x.KnownFindingId == null);
-            var newWarn = e.Issues.Any(x => x.Level == "warn" && x.KnownFindingId == null);
-            var known = e.Issues.Count > 0 && e.Issues.All(x => x.KnownFindingId != null);
-            pl.text = newErr ? "Lỗi" : newWarn ? "Cần xem" : known ? "Đã biết" : e.Kind == "property" ? "property" : "OK";
+            var newErr = e.Issues.Any(x => x.Level == "error" && x.IsNew);
+            var newWarn = e.Issues.Any(x => x.Level == "warn" && x.IsNew);
+            var known = e.Issues.Count > 0 && e.Issues.All(x => !x.IsNew);
+            pl.text = newErr ? "Lỗi" : newWarn ? "Cần xem" : known ? (e.Issues.All(x => x.KnownFindingId == null) ? "Cheat" : "Đã biết") : e.Kind == "property" ? "property" : "OK";
             pl.AddToClassList(newErr ? "vio" : newWarn ? "warn" : known ? "na" : e.Kind == "property" ? "info" : "pass");
             row.Q<Label>(className: "fid").text = $"{e.Time:HH:mm:ss}  #{e.Seq}";
             row.Q<Label>(className: "subj").text = e.Name;
@@ -408,6 +416,7 @@ namespace Titan.TrackingQA
                 var after = Session?.Events.SkipWhile(x => x != last).Skip(1).TakeWhile(x => !x.IsStep).ToList() ?? new List<RecordedEvent>();
                 _detail.Add(Section(after.Count > 0 ? $"Ngay sau đó ({after.Count})" : "Không có tracking nào ngay sau thao tác này"));
                 foreach (var x in after) _detail.Add(Para($"#{x.Seq}  <b>{x.Name}</b>  " + string.Join(" · ", x.Params.Take(5).Select(p => $"{p.Key}={p.Value}"))));
+                SimulationSection(e);
                 _detailScroll.scrollOffset = Vector2.zero;
                 return;
             }
@@ -424,10 +433,11 @@ namespace Titan.TrackingQA
             var log = RecordController.Issues;
             foreach (var i in e.Issues.OrderBy(i => i.KnownFindingId != null).ThenBy(i => i.Level == "error" ? 0 : 1))
             {
-                var rec = i.KnownFindingId == null ? log.Items.FirstOrDefault(x => x.Key == RecordIssueLog.KeyOf(e, i)) : null;
-                var refs = string.Join(", ", new[] { i.CaseId, i.KnownFindingId != null ? "đã biết · " + i.KnownFindingId + " (Check all)" : null, rec?.Id }.Where(x => x != null));
-                var p = Para((i.KnownFindingId != null ? "• " : i.Level == "error" ? "✘ " : "⚠ ") + i.Text + (refs.Length > 0 ? $"  <i>({refs})</i>" : ""), "sc-check");
-                p.AddToClassList(i.KnownFindingId != null ? "known" : i.Level);
+                var rec = i.IsNew ? log.Items.FirstOrDefault(x => x.Key == RecordIssueLog.KeyOf(e, i)) : null;
+                var refs = string.Join(", ", new[] { i.CaseId, i.KnownFindingId != null ? "đã biết · " + i.KnownFindingId + " (Check all)" : null,
+                    i.KnownFindingId == null && i.Cheat != null ? "ẩn — do cheat: " + i.Cheat : null, rec?.Id }.Where(x => x != null));
+                var p = Para((!i.IsNew ? "• " : i.Level == "error" ? "✘ " : "⚠ ") + i.Text + (refs.Length > 0 ? $"  <i>({refs})</i>" : ""), "sc-check");
+                p.AddToClassList(!i.IsNew ? "known" : i.Level);
                 if (rec != null)
                 {
                     p.tooltip = "Bấm để xem trong bảng Lỗi tổng hợp";
@@ -448,6 +458,42 @@ namespace Titan.TrackingQA
             }
             StackSection(e.Stack, "Đường gọi trong code (gần chỗ bắn nhất trước)");
             _detailScroll.scrollOffset = Vector2.zero;
+        }
+
+        /// <summary>R4: so cú bấm với log giả lập của Check all (chỉ tính khi đang xem — log giả lập lấy từ báo cáo Check all đang mở).</summary>
+        void Simulate(RecordSession s)
+        {
+            _sim.Clear();
+            var logs = QaRunner.Report?.Scenarios;
+            if (logs == null || logs.Count == 0) return;
+            try
+            {
+                using var _ = Knowledge.ForGame(QaRunner.GameId);
+                foreach (var m in ScenarioMatcher.Compare(s, logs)) _sim[m.StepSeq] = m;
+            }
+            catch (Exception e) { Debug.LogWarning("[Tracking QA] Không so được với log giả lập: " + e.Message); }
+        }
+
+        void SimulationSection(RecordedEvent click)
+        {
+            if (click.Kind != "click") return;
+            if (_runs.TryGetValue(click.Seq, out var rs)) click = rs.Last();
+            if (!_sim.TryGetValue(click.Seq, out var m))
+            {
+                if (QaRunner.Report?.Scenarios.Count > 0) return;
+                _detail.Add(Muted("Chưa so được với log giả lập: báo cáo Check all chưa có (hoặc bản cũ) — bấm Check all."));
+                return;
+            }
+            _detail.Add(Section($"So với log giả lập: {m.Verdict}"));
+            _detail.Add(Muted($"Giả lập [{string.Join(", ", m.Scenarios)}]: {string.Join(" · ", m.Triggers)}"));
+            foreach (var l in m.Lines)
+            {
+                var p = Para((l.Level == "ok" ? "✔ " : l.Level == "info" ? "· " : "⚠ ") + l.Text, "sc-check");
+                p.AddToClassList(l.Level == "info" ? "known" : l.Level);
+                _detail.Add(p);
+            }
+            if (m.Differs)
+                _detail.Add(Muted("Lệch không phải lỗi tracking: là chỗ Check all đoán khác thực tế (code rác, giá trị Remote Config, nhánh khác). Xem tab Kịch bản trong cửa sổ CheckAll."));
         }
 
         void StackSection(List<TrackingChecker.Core.Analysis.CodeLocation> stack, string title)

@@ -492,7 +492,9 @@ namespace Titan.TrackingQA
                 pill.text = err > 0 ? $"{err} lỗi" : warn > 0 ? $"{warn} cần xem" : "Đúng doc";
                 pill.AddToClassList(err > 0 ? "vio" : warn > 0 ? "warn" : "pass");
                 row.Q<Label>(className: "subj").text = sl.Label;
-                row.Q<Label>(className: "fid").text = sl.Steps.Count > 1 ? "nhiều bước" : $"{sl.Runs.Count} cách làm";
+                int plays = sl.Runs.Sum(x => x.RecordPlays), diffs = sl.Runs.Sum(x => x.RecordDiffs);
+                row.Q<Label>(className: "fid").text = (sl.Steps.Count > 1 ? "nhiều bước" : $"{sl.Runs.Count} cách làm")
+                    + (plays > 0 ? $" · Record ×{plays}" + (diffs > 0 ? $" · lệch ×{diffs}" : " · khớp") : "");
                 row.Q<Label>(className: "row-title").text = sl.Runs.FirstOrDefault()?.Trigger ?? "";
                 row.tooltip = sl.Label;
                 return;
@@ -632,12 +634,22 @@ namespace Titan.TrackingQA
             var title = Selectable(new Label("Kịch bản: " + log.Label));
             title.AddToClassList("d-title");
             _detail.Add(title);
-            _detail.Add(Muted("Suy từ code, không chạy game: khi người chơi làm hành động này thì lần lượt bắn gì, biến đếm nào đổi. Giá trị phụ thuộc lúc chạy ghi theo biểu thức trong code; có nhánh thì ghi điều kiện. Bấm vị trí để mở code."));
+            _detail.Add(Muted("Suy từ code, không chạy game: khi người chơi làm hành động này thì lần lượt bắn gì, biến đếm nào đổi. Giá trị phụ thuộc lúc chạy ghi theo biểu thức trong code; có nhánh thì ghi điều kiện. Bấm vị trí để mở code. Chơi bằng Record thì mỗi lần bấm đúng thao tác được so với giả lập."));
             foreach (var run in log.Runs.Take(8))
             {
                 var box = new VisualElement();
                 box.AddToClassList("trace");
                 box.Add(Para("<b>Thao tác:</b> " + run.Trigger));
+                if (run.RecordPlays > 0)
+                {
+                    var rb = new VisualElement();
+                    rb.AddToClassList("rec-box");
+                    rb.Add(Para(run.RecordDiffs == 0
+                        ? $"<b>Record:</b> đã bấm {run.RecordPlays} lần khi chơi — không lần nào khác giả lập."
+                        : $"<b>Record:</b> đã bấm {run.RecordPlays} lần khi chơi — <b>{run.RecordDiffs} lần khác giả lập</b> (Check all đoán khác thực tế: code rác, Remote Config, nhánh khác…). Lần gần nhất:"));
+                    foreach (var note in run.RecordNotes) { var p = Para("⚠ " + note, "sc-check"); p.AddToClassList("warn"); rb.Add(p); }
+                    box.Add(rb);
+                }
                 int n = 1;
                 foreach (var it in run.Items)
                 {
