@@ -30,7 +30,7 @@ namespace Titan.TrackingQA
     /// <summary>1 bước chơi: bấm nút / toggle UI, hoặc vào scene.</summary>
     public sealed class RawStep
     {
-        /// <summary>click / scene.</summary>
+        /// <summary>click / scene / focus.</summary>
         public string Kind = "click";
         public string Name = "";
         /// <summary>Popup / màn chứa nút (vd OutOfSpacePanel).</summary>
@@ -208,6 +208,23 @@ namespace Titan.TrackingQA
         }
 
         void OnDestroy() => UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnScene;
+
+        // Rời / quay lại cửa sổ game (OnApplicationFocus / OnApplicationPause cùng lúc → chỉ ghi khi đổi trạng thái).
+        // Game thường bắn level_exit… ở đây: trong Editor là do bấm ra ngoài cửa sổ Game, trên máy thật là app xuống nền.
+        bool _away;
+        void OnApplicationFocus(bool focus) => Focus(!focus, "OnApplicationFocus");
+        void OnApplicationPause(bool pause) => Focus(pause, "OnApplicationPause");
+
+        void Focus(bool away, string by)
+        {
+            if (away == _away || Time.frameCount < 2) return;
+            _away = away;
+            RecordBus.PushStep(new RawStep
+            {
+                Kind = "focus", Name = away ? "Rời cửa sổ game" : "Quay lại cửa sổ game", Context = by,
+                RealTime = Time.realtimeSinceStartup, Frame = Time.frameCount, Time = DateTime.Now,
+            });
+        }
 
         void OnScene(UnityEngine.SceneManagement.Scene s, UnityEngine.SceneManagement.LoadSceneMode mode) =>
             RecordBus.PushStep(new RawStep { Kind = "scene", Name = s.name, Context = mode == UnityEngine.SceneManagement.LoadSceneMode.Additive ? "thêm (additive)" : null,

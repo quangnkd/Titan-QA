@@ -148,6 +148,9 @@ namespace Titan.TrackingQA
             if (Pending.Count == 0) return;
             var items = Pending.ToList();
             Pending.Clear();
+            // Rời / quay lại cửa sổ game là nguyên nhân của các lời gọi cùng frame (game bắt OnApplicationPause trước người nghe của QA)
+            var focus = items.Where(o => o is RawStep { Kind: "focus" }).ToList();
+            if (focus.Count > 0) items = focus.Concat(items.Except(focus)).ToList();
             foreach (var click in items.OfType<RawStep>().Where(s => s.Kind == "click").ToList())
             {
                 var first = items.FindIndex(o => o is RawTrackingCall c && c.FromClick);
@@ -200,6 +203,7 @@ namespace Titan.TrackingQA
                     _sequence?.Check(e);
                     _checker.MarkKnown(e);
                     CheatFilter.Mark(e, s.Events); // lỗi do nút / code cheat → ẩn (người chơi thật không gặp)
+                    CheatFilter.MarkFocus(e, s.Events); // bắn do rời focus cửa sổ Unity → ghi chú (trên máy thật = app xuống nền)
                 }
                 catch (Exception ex) { Debug.LogWarning("[Tracking QA] Không kiểm được " + e.Name + ": " + ex.Message); }
             }

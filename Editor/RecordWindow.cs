@@ -377,7 +377,7 @@ namespace Titan.TrackingQA
             if (e.IsStep)
             {
                 var sim = _sim.TryGetValue(e.Seq, out var sm) ? sm : null;
-                pl.text = e.Kind == "click" ? (sim?.Differs == true ? "▶ Bấm ≠" : "▶ Bấm") : "▶ Scene";
+                pl.text = e.Kind == "click" ? (sim?.Differs == true ? "▶ Bấm ≠" : "▶ Bấm") : e.Kind == "focus" ? (e.Name.StartsWith("Rời") ? "⏸ Rời game" : "▶ Quay lại") : "▶ Scene";
                 pl.AddToClassList(sim?.Differs == true ? "warn" : "info");
                 row.Q<Label>(className: "fid").text = $"{e.Time:HH:mm:ss}";
                 row.Q<Label>(className: "subj").text = _runs.TryGetValue(e.Seq, out var run) ? $"{e.Name} … ×{run.Count}" : e.Name;
@@ -393,7 +393,7 @@ namespace Titan.TrackingQA
             pl.AddToClassList(newErr ? "vio" : newWarn ? "warn" : known ? "na" : e.Kind == "property" ? "info" : "pass");
             row.Q<Label>(className: "fid").text = $"{e.Time:HH:mm:ss}  #{e.Seq}";
             row.Q<Label>(className: "subj").text = e.Name;
-            row.Q<Label>(className: "row-title").text = string.Join(" · ", e.Params.Take(6).Select(p => e.Kind == "property" ? p.Value : $"{p.Key}={p.Value}"));
+            row.Q<Label>(className: "row-title").text = (e.Note != null ? "(rời focus) " : "") + string.Join(" · ", e.Params.Take(6).Select(p => e.Kind == "property" ? p.Value : $"{p.Key}={p.Value}"));
             row.tooltip = string.Join("\n", e.Issues.Select(x => x.Text));
         }
 
@@ -404,11 +404,12 @@ namespace Titan.TrackingQA
             _detail.Clear();
             if (e.IsStep)
             {
-                var t = new Label((e.Kind == "click" ? "Bấm " : "Vào scene ") + e.Name);
+                var t = new Label(e.Kind == "click" ? "Bấm " + e.Name : e.Kind == "focus" ? e.Name : "Vào scene " + e.Name);
                 t.AddToClassList("d-title");
                 _detail.Add(t);
                 _detail.Add(Para($"{e.Time:HH:mm:ss.fff} · {e.T:F2}s · frame {e.Frame}"));
-                if (e.Context != null) _detail.Add(Para("<b>Trong:</b> " + e.Context));
+                if (e.Kind == "focus") _detail.Add(Para("Trong Editor: bấm ra ngoài cửa sổ Game (sang cửa sổ khác, cửa sổ Record…) hoặc bấm Pause. Trên máy thật tương ứng người chơi bấm Home / chuyển app. Game thường bắn level_exit… ở đây — đúng, không phải lỗi.", "detail-text"));
+                else if (e.Context != null) _detail.Add(Para("<b>Trong:</b> " + e.Context));
                 if (e.Path != null) _detail.Add(Para("<b>Đường dẫn:</b> " + e.Path));
                 if (_runs.TryGetValue(e.Seq, out var steps))
                     _detail.Add(Para($"<b>Bấm liên tiếp {steps.Count} lần:</b> " + string.Join(", ", steps.Select(x => x.Name))));
@@ -446,6 +447,7 @@ namespace Titan.TrackingQA
                 }
                 _detail.Add(p);
             }
+            if (e.Note != null) _detail.Add(Para("ⓘ " + e.Note, "detail-text"));
             if (e.Issues.Count == 0) _detail.Add(Para("✔ Đúng doc", "sc-check"));
 
             _detail.Add(Section(e.Kind == "property" ? "Giá trị" : $"Param ({e.Params.Count})"));

@@ -9,7 +9,7 @@ Package Unity kiểm tra tracking Firebase của game **từ source code**, so v
 Thêm vào `Packages/manifest.json` của game (repo private — máy cần quyền đọc repo, giống các package Titan khác):
 
 ```json
-"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.6.4",
+"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.6.5",
 ```
 
 Đang sửa package thì trỏ tạm về thư mục trên máy: `"file:../../TitanTrackingQA"`.
@@ -72,6 +72,7 @@ Bấm **Play** là bắt đầu ghi (tắt được bằng "Tự Record khi Play
   - đã đóng / Đã sửa? mà gặp lại → **Gặp lại**; **Bỏ qua** thì gặp lại chỉ đếm số lần;
   - file code chỗ bắn đổi → nhãn "code đã đổi — có thể đã sửa".
   Lỗi Record còn mở cũng hiện trong cửa sổ CheckAll (chip **Chỉ lỗi Record**) và tính vào kết quả **Theo case**; Đúng thiết kế / lưu case G-xxx làm được ở cả 2 cửa sổ.
+- Ghi bước **⏸ Rời cửa sổ game / ▶ Quay lại** (OnApplicationFocus / OnApplicationPause): bấm ra ngoài cửa sổ Game trong Editor = app xuống nền trên máy thật. Event game bắn lúc đó (vd `level_exit` ngay sau `level_start`) được ghi chú "(rời focus)" — đúng là phải bắn, không phải lỗi.
 - Trong Editor không có: quảng cáo thật, `screen_view` tự động, param Firebase tự thêm (`firebase_*`, `ga_session_*`, `fps`).
 
 Báo cáo Check all gần nhất lưu ở `Library/TrackingQA/last-report.json` (mở lại Unity vẫn xem được); chỉnh sửa trên máy (ngoại lệ, chỉnh doc) ở `UserSettings/TrackingQA/` — không vào git của game.
