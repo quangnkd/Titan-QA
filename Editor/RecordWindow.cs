@@ -246,7 +246,7 @@ namespace Titan.TrackingQA
             {
                 var q = _search.Trim();
                 Simulate(s);
-                var shown = s.Events.Where(e => !_onlyIssues || (!e.IsStep && e.Issues.Any(i => i.IsNew)) || (e.Kind == "click" && _sim.TryGetValue(e.Seq, out var sm) && sm.Differs))
+                var shown = s.Events.Where(e => !_onlyIssues || (!e.IsStep && e.Issues.Any(i => i.IsNew)) || (_sim.TryGetValue(e.Seq, out var sm) && sm.Differs))
                     .Where(e => q.Length == 0 || Has(e.Name, q) || Has(e.Context, q) || e.Params.Any(p => Has(p.Key, q) || Has(p.Value, q)) || e.Issues.Any(i => Has(i.Text, q)));
                 // Gộp các lần bấm liên tiếp cùng kiểu, cùng màn (tên chỉ khác số) thành 1 dòng
                 _runs.Clear();
@@ -267,7 +267,7 @@ namespace Titan.TrackingQA
                 int diff = _sim.Values.Count(m => m.Differs);
                 _counts.text = $"{s.Events.Count(e => !e.IsStep)} event · {s.Events.Count(e => e.Kind == "click")} lần bấm · {s.ErrorCount} lỗi mới · {s.WarnCount} cần xem"
                     + (known > 0 ? $" · {known} đã biết (Check all)" : "") + (cheat > 0 ? $" · {cheat} do cheat (ẩn)" : "")
-                    + (_sim.Count > 0 ? $" · {diff}/{_sim.Count} lần bấm lệch giả lập" : "");
+                    + (_sim.Count > 0 ? $" · {diff}/{_sim.Count} thao tác lệch giả lập" : "");
             }
             else _counts.text = "";
             _list.RefreshItems();
@@ -393,7 +393,9 @@ namespace Titan.TrackingQA
             pl.AddToClassList(newErr ? "vio" : newWarn ? "warn" : known ? "na" : e.Kind == "property" ? "info" : "pass");
             row.Q<Label>(className: "fid").text = $"{e.Time:HH:mm:ss}  #{e.Seq}";
             row.Q<Label>(className: "subj").text = e.Name;
-            row.Q<Label>(className: "row-title").text = (e.Note != null ? "(rời focus) " : "") + string.Join(" · ", e.Params.Take(6).Select(p => e.Kind == "property" ? p.Value : $"{p.Key}={p.Value}"));
+            var auto = _sim.TryGetValue(e.Seq, out var am) ? am : null;
+            if (auto != null && !newErr && !newWarn) { pl.text = auto.Differs ? "≠ giả lập" : pl.text; if (auto.Differs) { pl.RemoveFromClassList("pass"); pl.AddToClassList("warn"); } }
+            row.Q<Label>(className: "row-title").text = (auto != null ? $"◆ {auto.Click}: {auto.Verdict} · " : "") + (e.Note != null ? "(rời focus) " : "") + string.Join(" · ", e.Params.Take(6).Select(p => e.Kind == "property" ? p.Value : $"{p.Key}={p.Value}"));
             row.tooltip = string.Join("\n", e.Issues.Select(x => x.Text));
         }
 
@@ -458,6 +460,7 @@ namespace Titan.TrackingQA
                 _detail.Add(Section($"Item {k + 1}"));
                 foreach (var p in e.Items[k]) _detail.Add(Para($"<b>{p.Key}</b> = {p.Value ?? "null"}  <i>{p.Type}</i>"));
             }
+            SimulationSection(e);
             StackSection(e.Stack, "Đường gọi trong code (gần chỗ bắn nhất trước)");
             _detailScroll.scrollOffset = Vector2.zero;
         }
@@ -476,17 +479,19 @@ namespace Titan.TrackingQA
             catch (Exception e) { Debug.LogWarning("[Tracking QA] Không so được với log giả lập: " + e.Message); }
         }
 
+        /// <summary>So với log giả lập: cú bấm nút, hoặc event mở đầu 1 thao tác tự xảy ra (popup tự hiện, app xuống nền…).</summary>
         void SimulationSection(RecordedEvent click)
         {
-            if (click.Kind != "click") return;
+            if (click.Kind is "scene" or "focus") return;
             if (_runs.TryGetValue(click.Seq, out var rs)) click = rs.Last();
             if (!_sim.TryGetValue(click.Seq, out var m))
             {
-                if (QaRunner.Report?.Scenarios.Count > 0) return;
+                if (click.Kind != "click" || QaRunner.Report?.Scenarios.Count > 0) return;
                 _detail.Add(Muted("Chưa so được với log giả lập: báo cáo Check all chưa có (hoặc bản cũ) — bấm Check all."));
                 return;
             }
-            _detail.Add(Section($"So với log giả lập: {m.Verdict}"));
+            _detail.Add(Section(m.Kind == "auto" ? $"Thao tác tự xảy ra: {m.Click} — so với log giả lập: {m.Verdict}" : $"So với log giả lập: {m.Verdict}"));
+            if (m.Kind == "auto") _detail.Add(Muted($"Nhận ra qua đường gọi đi qua {m.Context}; so {m.EventSeqs.Count} lời gọi trên cùng luồng: " + string.Join(", ", m.EventSeqs.Select(x => "#" + x))));
             _detail.Add(Muted($"Giả lập [{string.Join(", ", m.Scenarios)}]: {string.Join(" · ", m.Triggers)}"));
             foreach (var l in m.Lines)
             {
