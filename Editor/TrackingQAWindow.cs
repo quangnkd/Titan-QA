@@ -26,7 +26,7 @@ namespace Titan.TrackingQA
 
         // Bộ lọc (giữ khi vẽ lại)
         readonly HashSet<FindingCategory> _cats = new HashSet<FindingCategory>(Cats.Where(c => c != FindingCategory.OutOfPlan));
-        bool _showAccepted, _hideRejected = true;
+        bool _hideRejected = true;
         bool _showNotOnDevice; // mục người chơi thật không gặp (chỉ Editor / bản debug / nút cheat) — ẩn mặc định
         bool _showRefuted;     // mục Record bác bỏ (Check all đoán sai) — ẩn mặc định
         bool _onlyRecord;      // chỉ lỗi Record (gặp khi chơi)
@@ -58,7 +58,7 @@ namespace Titan.TrackingQA
         Toggle _rejectedToggle = null!, _deviceToggle = null!, _claude = null!;
         // Chỉ hiện việc cần xử lý: case Đạt, mục Ngoài plan, kịch bản đúng doc luôn ẩn (xem đủ ở báo cáo HTML)
 
-        static bool HiddenCaseGroup(string g) => g is "pass" or "info";
+        static bool HiddenCaseGroup(string g) => g is "pass" or "info" or "acc"; // Đạt, Ngoài plan, Đúng thiết kế: không cần xử lý
         /// <summary>Kịch bản không có gì cần xem: mọi đối chiếu đều đúng doc, Record không thấy lệch.</summary>
         static bool CleanScenario(ScenarioLog s) => !s.Runs.Any(x => x.Checks.Any(c => c.Level is "error" or "warn") || x.RecordDiffs > 0);
         Button _reviewBtn = null!;
@@ -369,8 +369,6 @@ namespace Titan.TrackingQA
                     if (on) _cats.Add(c); else _cats.Remove(c);
                     RebuildList();
                 }));
-            var acc = r.Findings.Count(f => f.Accepted != null);
-            if (acc > 0) _chips.Add(Chip($"Đã chấp nhận · {acc}", "acc", _showAccepted, on => { _showAccepted = on; RebuildList(); }));
             var refuted = r.Findings.Count(f => f.Accepted == null && f.RecordRefuted != null);
             if (refuted > 0) _chips.Add(Chip($"Record bác bỏ · {refuted}", "info", _showRefuted, on => { _showRefuted = on; RebuildList(); }));
             var rec = r.Findings.Count(f => f.RecordIssueId != null && f.IsOpen);
@@ -417,7 +415,7 @@ namespace Titan.TrackingQA
             {
                 _selectedKey = finding.StableKey();
                 if (_onlyRecord && finding.RecordIssueId == null) _onlyRecord = false;
-                if (finding.Accepted != null) _showAccepted = true; else _cats.Add(finding.Category);
+                _cats.Add(finding.Category);
                 if (finding.Accepted == null && finding.NotOnDevice != null) { _showNotOnDevice = true; _deviceToggle.SetValueWithoutNotify(true); }
             }
             if (caseId != null || finding != null)
@@ -465,7 +463,7 @@ namespace Titan.TrackingQA
                     _items.AddRange(r.Findings
                         .Where(f => !_onlyRecord || f.RecordIssueId != null)
                         .Where(f => f.Category != FindingCategory.OutOfPlan || f.Accepted != null)
-                        .Where(f => f.Accepted != null ? _showAccepted : f.RecordRefuted != null ? _showRefuted
+                        .Where(f => f.Accepted != null ? false : f.RecordRefuted != null ? _showRefuted
                             // "Chỉ lỗi Record": mọi lỗi Record còn mở, không phụ thuộc chip nhóm
                             : (_onlyRecord || _cats.Contains(f.Category)) && (f.NotOnDevice == null || _showNotOnDevice))
                         .Where(f => !_hideRejected || f.AiVerdict != "rejected" || f.Accepted != null)
@@ -771,8 +769,8 @@ namespace Titan.TrackingQA
 
             if (c.FindingIds.Count > 0)
             {
-                _detail.Add(Section($"Lỗi thuộc case này ({c.FindingIds.Count})"));
-                foreach (var f in r.Findings.Where(x => x.CaseIds.Contains(c.Id)))
+                _detail.Add(Section($"Lỗi thuộc case này ({r.Findings.Count(x => x.CaseIds.Contains(c.Id) && x.Accepted == null)})"));
+                foreach (var f in r.Findings.Where(x => x.CaseIds.Contains(c.Id) && x.Accepted == null)) // đã chấp nhận thì không hiện
                 {
                     var row = Row("case-finding");
                     var p = new Label(f.Accepted != null ? "Đã chấp nhận" : HtmlReport.CatLabel(f.Category));
