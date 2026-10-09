@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "accepted": [
+    {
+      "key": "flow_double_level_end|level_end|||Assets/Scripts/UI/OutOfSpacePanel.cs#OutOfSpacePanel.EndGame",
+      "rule": "flow_double_level_end",
+      "subject": "level_end",
+      "title": "Có luồng bắn level_end 2 lần cho cùng 1 lượt chơi",
+      "reason": "Không có btn home khi thua",
+      "by": "ADMIN",
+      "at": "2026-10-09T08:55:01.9898029+07:00",
+      "kind": "false_positive",
+      "cause": "code_unused"
+    }
+  ],
+  "unaccepted": []
+}
