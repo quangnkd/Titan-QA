@@ -9,7 +9,7 @@ Package Unity kiểm tra tracking Firebase của game **từ source code**, so v
 Thêm vào `Packages/manifest.json` của game (repo private — máy cần quyền đọc repo, giống các package Titan khác):
 
 ```json
-"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.6.2",
+"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.6.3",
 ```
 
 Đang sửa package thì trỏ tạm về thư mục trên máy: `"file:../../TitanTrackingQA"`.
@@ -17,8 +17,8 @@ Thêm vào `Packages/manifest.json` của game (repo private — máy cần quy�
 Menu **Titan → QAUTO**:
 - **Tracking QA CheckAll** — đọc code, so với doc (không cần chạy game).
 - **Tracking QA Record** — ghi và kiểm event khi chơi trong Editor (bấm Play là tự ghi, không cần mở cửa sổ).
-- **Tracking QA Kho chung** — gửi chỉnh sửa trên máy (ngoại lệ, case G-xxx, chỉnh doc) cho cả team bằng PR; học từ chỗ Check all sai.
-- **Tracking QA Doc** — Check all hiểu file tracking thế nào; sửa / xác nhận chỗ đọc chưa chắc.
+
+Trong cửa sổ CheckAll còn 2 nút: **Doc** (Check all hiểu file tracking thế nào; sửa / xác nhận chỗ đọc chưa chắc) và **Kho chung** (gửi chỉnh sửa trên máy cho cả team bằng PR; học từ chỗ Check all sai).
 
 ### Check all
 

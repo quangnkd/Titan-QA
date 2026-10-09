@@ -653,7 +653,7 @@ namespace Titan.TrackingQA
             btns.Add(save);
             btns.Add(new Button(() => { _form = null; ShowIssueDetail(it); }) { text = "Huỷ" });
             form.Add(btns);
-            form.Add(Muted("Lưu trên máy này, chỉ cho game này (UserSettings/TrackingQA/knowledge-local). Gửi cho cả team: Titan → QAUTO → Tracking QA Kho chung (tạo PR)."));
+            form.Add(Muted("Lưu trên máy này, chỉ cho game này (UserSettings/TrackingQA/knowledge-local). Gửi cho cả team: nút “Kho chung” trong cửa sổ CheckAll."));
             _detail.Add(form);
             (_form == "case" ? title : reason).schedule.Execute(() => (_form == "case" ? title : reason).Focus());
         }

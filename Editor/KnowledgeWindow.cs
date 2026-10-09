@@ -38,7 +38,6 @@ namespace Titan.TrackingQA
         bool _busy;
         string? _lastCleaned;
 
-        [MenuItem("Titan/QAUTO/Tracking QA Kho chung", false, 3)]
         public static void Open() => GetWindow<KnowledgeWindow>("Tracking QA · Kho chung").minSize = new Vector2(560, 360);
 
         /// <summary>Số chỉnh sửa trên máy chờ gửi của game đang mở (hiện trên nút ở cửa sổ CheckAll).</summary>

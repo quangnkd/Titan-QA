@@ -38,7 +38,6 @@ namespace Titan.TrackingQA
         ScrollView _detailScroll = null!;
         Button _save = null!;
 
-        [MenuItem("Titan/QAUTO/Tracking QA Doc", false, 4)]
         public static void Open() => GetWindow<DocWindow>("Tracking QA · Doc").minSize = new Vector2(640, 360);
 
         void OnFocus()
