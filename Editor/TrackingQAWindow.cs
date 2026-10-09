@@ -465,7 +465,9 @@ namespace Titan.TrackingQA
                     _items.AddRange(r.Findings
                         .Where(f => !_onlyRecord || f.RecordIssueId != null)
                         .Where(f => f.Category != FindingCategory.OutOfPlan || f.Accepted != null)
-                        .Where(f => f.Accepted != null ? _showAccepted : f.RecordRefuted != null ? _showRefuted : _cats.Contains(f.Category) && (f.NotOnDevice == null || _showNotOnDevice))
+                        .Where(f => f.Accepted != null ? _showAccepted : f.RecordRefuted != null ? _showRefuted
+                            // "Chỉ lỗi Record": mọi lỗi Record còn mở, không phụ thuộc chip nhóm
+                            : (_onlyRecord || _cats.Contains(f.Category)) && (f.NotOnDevice == null || _showNotOnDevice))
                         .Where(f => !_hideRejected || f.AiVerdict != "rejected" || f.Accepted != null)
                         .Where(f => q.Length == 0 || Matches(f, q))
                         .OrderBy(f => f.Accepted != null ? 2 : f.NotOnDevice != null ? 1 : 0).ThenBy(f => f.Category.Rank()));
