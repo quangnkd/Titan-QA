@@ -9,7 +9,7 @@ Package Unity kiểm tra tracking Firebase của game **từ source code**, so v
 Thêm vào `Packages/manifest.json` của game (repo private — máy cần quyền đọc repo, giống các package Titan khác):
 
 ```json
-"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.7.3",
+"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.7.4",
 ```
 
 Đang sửa package thì trỏ tạm về thư mục trên máy: `"file:../../TitanTrackingQA"`.
