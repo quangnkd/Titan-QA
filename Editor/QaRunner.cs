@@ -259,7 +259,7 @@ namespace Titan.TrackingQA
         public static string Summary(CheckReport r)
         {
             int N(FindingCategory c) => r.Findings.Count(f => f.Category == c && f.IsOpen);
-            return $"{N(FindingCategory.CodeError)} lỗi · {N(FindingCategory.Suspect)} nghi ngờ · {N(FindingCategory.Missing)} thiếu · {N(FindingCategory.DocIssue)} lỗi doc · {N(FindingCategory.OutOfPlan)} ngoài plan";
+            return $"{N(FindingCategory.CodeError)} lỗi · {N(FindingCategory.Suspect)} nghi ngờ · {N(FindingCategory.Missing)} thiếu · {N(FindingCategory.DocIssue)} lỗi doc";
         }
 
         /// <summary>Record có kết quả đối chiếu mới → cập nhật báo cáo đang xem (cửa sổ CheckAll vẽ lại).</summary>

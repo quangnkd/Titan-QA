@@ -55,7 +55,13 @@ namespace Titan.TrackingQA
         VisualElement _summary = null!, _chips = null!, _detail = null!, _split = null!;
         Foldout _blind = null!;
         Label _empty = null!;
-        Toggle _rejectedToggle = null!, _deviceToggle = null!, _claude = null!;
+        Toggle _rejectedToggle = null!, _deviceToggle = null!, _claude = null!, _allToggle = null!;
+        /// <summary>Hiện cả mục không cần xử lý: case Đạt, Ngoài plan, kịch bản đúng doc (ẩn mặc định — chỉ hiện việc cần làm).</summary>
+        bool _showAll;
+
+        static bool HiddenCaseGroup(string g) => g is "pass" or "info";
+        /// <summary>Kịch bản không có gì cần xem: mọi đối chiếu đều đúng doc, Record không thấy lệch.</summary>
+        static bool CleanScenario(ScenarioLog s) => !s.Runs.Any(x => x.Checks.Any(c => c.Level is "error" or "warn") || x.RecordDiffs > 0);
         Button _reviewBtn = null!;
         ListView _list = null!;
         ScrollView _detailScroll = null!;
@@ -185,6 +191,16 @@ namespace Titan.TrackingQA
             _deviceToggle = new Toggle { value = _showNotOnDevice, tooltip = "Mục chỉ gặp khi chạy trong Unity Editor, ở bản debug hoặc bấm nút cheat — người chơi thật (bản release) không gặp nên mặc định ẩn" };
             _deviceToggle.RegisterValueChangedCallback(e => { _showNotOnDevice = e.newValue; RebuildList(); });
             filter.Add(_deviceToggle);
+            _allToggle = new Toggle { value = _showAll, tooltip = "Mặc định chỉ hiện mục cần xử lý. Bật để xem cả case Đạt, mục Ngoài plan (code có, doc không có) và kịch bản đúng doc." };
+            _allToggle.RegisterValueChangedCallback(e =>
+            {
+                _showAll = e.newValue;
+                if (_showAll) { _cats.Add(FindingCategory.OutOfPlan); _caseFilter.Add("pass"); _caseFilter.Add("info"); }
+                else _cats.Remove(FindingCategory.OutOfPlan);
+                if (QaRunner.Report is { } rr) RenderChips(rr);
+                RebuildList();
+            });
+            filter.Add(_allToggle);
             _summary.Add(filter);
             root.Add(_summary);
 
@@ -339,11 +355,19 @@ namespace Titan.TrackingQA
             var hidden = r.Findings.Count(f => f.Accepted == null && f.NotOnDevice != null);
             _deviceToggle.label = $"Hiện mục chỉ gặp trong Editor / cheat ({hidden})";
             _deviceToggle.style.display = _mode == 0 && hidden > 0 ? DisplayStyle.Flex : DisplayStyle.None;
+            var quiet = _mode switch
+            {
+                0 => r.Findings.Count(f => f.Category == FindingCategory.OutOfPlan && f.IsOpen),
+                1 => r.Cases.Count(c => HiddenCaseGroup(CaseGroup(c.Status))),
+                _ => r.Scenarios.Count(CleanScenario),
+            };
+            _allToggle.label = _mode switch { 0 => $"Hiện cả mục ngoài plan ({quiet})", 1 => $"Hiện cả case đạt / ngoài plan ({quiet})", _ => $"Hiện cả kịch bản đúng doc ({quiet})" };
+            _allToggle.style.display = quiet > 0 || _showAll ? DisplayStyle.Flex : DisplayStyle.None;
 
             if (_mode == 2) return;
             if (_mode == 1)
             {
-                foreach (var g in CaseGroups)
+                foreach (var g in CaseGroups.Where(g => _showAll || !HiddenCaseGroup(g.Key)))
                 {
                     var n = r.Cases.Count(c => CaseGroup(c.Status) == g.Key);
                     if (n == 0) continue;
@@ -358,7 +382,7 @@ namespace Titan.TrackingQA
             }
 
             int N(FindingCategory c) => r.Findings.Count(f => f.Category == c && f.IsOpen && (!_onlyRecord || f.RecordIssueId != null));
-            foreach (var c in Cats)
+            foreach (var c in Cats.Where(c => _showAll || c != FindingCategory.OutOfPlan))
                 _chips.Add(Chip($"{HtmlReport.CatLabel(c)} · {N(c)}", Cls(c), _cats.Contains(c), on =>
                 {
                     if (on) _cats.Add(c); else _cats.Remove(c);
@@ -447,11 +471,11 @@ namespace Titan.TrackingQA
             {
                 var q = _search.Trim();
                 if (_mode == 2)
-                    _items.AddRange(r.Scenarios.Where(s => q.Length == 0 || Has(s.Label, q)
+                    _items.AddRange(r.Scenarios.Where(s => _showAll || !CleanScenario(s)).Where(s => q.Length == 0 || Has(s.Label, q)
                         || s.Runs.Any(run => Has(run.Trigger, q) || run.Items.Any(i => Has(i.Name, q)))));
                 else if (_mode == 1)
                     _items.AddRange(r.Cases
-                        .Where(c => _caseFilter.Contains(CaseGroup(c.Status)))
+                        .Where(c => _caseFilter.Contains(CaseGroup(c.Status)) && (_showAll || !HiddenCaseGroup(CaseGroup(c.Status))))
                         .Where(c => q.Length == 0 || Has(c.Id, q) || Has(c.Title, q) || Has(c.Group, q))
                         .OrderBy(c => CaseEngine.StatusOrder(c.Status)).ThenBy(c => c.Id, StringComparer.Ordinal));
                 else if (_showFixed)
@@ -459,6 +483,7 @@ namespace Titan.TrackingQA
                 else
                     _items.AddRange(r.Findings
                         .Where(f => !_onlyRecord || f.RecordIssueId != null)
+                        .Where(f => _showAll || f.Category != FindingCategory.OutOfPlan || f.Accepted != null)
                         .Where(f => f.Accepted != null ? _showAccepted : f.RecordRefuted != null ? _showRefuted : _cats.Contains(f.Category) && (f.NotOnDevice == null || _showNotOnDevice))
                         .Where(f => !_hideRejected || f.AiVerdict != "rejected" || f.Accepted != null)
                         .Where(f => q.Length == 0 || Matches(f, q))
@@ -477,6 +502,16 @@ namespace Titan.TrackingQA
             {
                 _list.ClearSelection();
                 ShowDetail(null);
+                if (!_showAll && r != null && _search.Trim().Length == 0)
+                {
+                    _detail.Clear();
+                    _detail.Add(Muted(_mode switch
+                    {
+                        2 => "Mọi kịch bản đều đúng doc và Record chưa thấy lệch — không có gì cần xem. Bật “Hiện cả kịch bản đúng doc” để xem log giả lập.",
+                        1 => "Không có case nào cần xử lý (case Đạt / Ngoài plan đang ẩn).",
+                        _ => "Không có mục nào cần xử lý với bộ lọc này.",
+                    }));
+                }
                 return;
             }
             _list.SetSelectionWithoutNotify(new[] { idx });
