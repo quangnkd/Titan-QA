@@ -153,7 +153,7 @@ Chuyển từ ~30 luật đang chạy trong lõi và 12 lỗi hay gặp (SKILL.m
 | TC-006 | Mỗi giá trị doc định nghĩa phải có ít nhất 1 nhánh bắn | Thiếu (chưa làm nhánh đó); nếu hành động đó đang bắn giá trị khác → Lỗi (qua TC-007) | ✅ | — | value_never_sent |
 | TC-007 | Hành động người chơi → đúng giá trị doc định nghĩa cho hành động đó | Lỗi | ✅ | ✅ | value_action_mismatch |
 | TC-008 | User property trong doc phải được set | Thiếu | ✅ | ✅ | prop_missing |
-| TC-009 | User property set ngay **sau** event tương ứng (coin / lives / lives_infinity / booster sau `resource_update`; `iap_count` sau `Purchase_Success`; `reward_count`, `inter_count` sau `ad_impression_*`) | Nghi ngờ (Check all) / Lỗi (Record thấy thật) | ✅ | ✅ | flow_property_before_event |
+| TC-009 | ⛔ **Đang tắt** (09/10/2026, QA quyết định bỏ qua lỗi thứ tự property / event — `tracking-rules.json → disabledRules`). User property set ngay **sau** event tương ứng (coin / lives / lives_infinity / booster sau `resource_update`; `iap_count` sau `Purchase_Success`; `reward_count`, `inter_count` sau `ad_impression_*`) | Nghi ngờ (Check all) / Lỗi (Record thấy thật) | ✅ | ✅ | flow_property_before_event |
 | **B. Luồng chơi (theo Master)** | | | | | |
 | TC-010 | Mỗi lượt chơi có đúng 1 `level_start` và 1 `level_end` — không thừa, không thiếu ở nhánh nào (thắng, thua, replay, home, thoát) | Lỗi | ⏳ một phần (có: `level_end` bắn 2 lần) | ✅ | flow_double_level_end |
 | TC-011 | Kill app / thoát giữa level → lần mở sau phải có `level_end win=2` | Lỗi | ⏳ một phần (qua TC-006, TC-002) | ✅ | mới |

@@ -9,7 +9,7 @@ Package Unity kiểm tra tracking Firebase của game **từ source code**, so v
 Thêm vào `Packages/manifest.json` của game (repo private — máy cần quyền đọc repo, giống các package Titan khác):
 
 ```json
-"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.6.0",
+"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.6.1",
 ```
 
 Đang sửa package thì trỏ tạm về thư mục trên máy: `"file:../../TitanTrackingQA"`.
@@ -64,6 +64,7 @@ Bấm **Play** là bắt đầu ghi (tắt được bằng "Tự Record khi Play
 - Đối chiếu với Check all (cập nhật vào cửa sổ CheckAll, giữ qua các lần Check all — `UserSettings/TrackingQA/record-feedback.json`): **xác nhận** (Nghi ngờ → Lỗi), **bác bỏ** (Check all đoán sai, không tính; nút "Xác nhận báo nhầm" lưu thành ngoại lệ), **không tái hiện** (ghi chú).
 - Mỗi lần Play là 1 phiên, tự lưu dần vào `UserSettings/TrackingQA/record/` (giữ 50 phiên), xem lại được.
 - Kiểm thêm: về Home (bấm nút Home / `level_end` mang giá trị "về Home") mà chưa bấm vào chơi đã bắn `level_start` → lượt ma (TC-010).
+- Luật đang tắt cho mọi game (`Knowledge/common/tracking-rules.json → disabledRules`) không báo ở cả Check all lẫn Record; hiện tắt: thứ tự user property / event (TC-009).
 - **Lỗi do cheat được ẩn** (người chơi thật không gặp): đường gọi đi qua code cheat / debug (vd `Cheat.ActiveCheat` nhảy level) → ẩn mọi lỗi của lời gọi đó; ngay sau khi bấm nút cheat (vd `Setting/Cheat/ButtonWin`) → ẩn lỗi về trình tự lượt chơi, lỗi theo doc (param rỗng…) vẫn giữ. Không tính vào số lỗi, không vào bảng Lỗi Record; vẫn xem được (xám, ghi lý do).
 - **So với log giả lập** (cần Check all có tab Kịch bản): mỗi cú bấm nút có trong log giả lập (vd “btnReplay” trong OutOfSpacePanel — tên GameObject "Button Replay" cũng khớp) được so với những gì Check all dự đoán: event luôn bắn mà lúc chơi không thấy, event bắn ngay khi bấm mà giả lập không có, giá trị số khác (vd win). Kết quả: **Khớp / Lệch / Chưa rõ** ở dòng bấm (dòng thời gian, "▶ Bấm ≠") và cộng dồn ở tab **Kịch bản** của CheckAll ("Record ×N · lệch ×K"). Lệch không phải lỗi tracking — là chỗ Check all đoán khác thực tế (code rác, Remote Config, nhánh khác) để QA xem và sửa nhận định.
 - **Lỗi tổng hợp** (bảng Lỗi Record, `UserSettings/TrackingQA/record-issues.json`): lỗi mới (Check all chưa báo) cộng dồn qua mọi phiên — mã `R001…`, số lần gặp, số phiên, các bước bấm trước lần gặp đầu, mở đúng chỗ trong dòng thời gian. Trạng thái:

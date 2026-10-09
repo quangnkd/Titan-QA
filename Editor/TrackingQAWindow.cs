@@ -379,7 +379,7 @@ namespace Titan.TrackingQA
         static readonly (string Key, string Label)[] CaseGroups =
         {
             ("vio", "Vi phạm"), ("warn", "Nghi ngờ"), ("miss", "Thiếu"), ("doc", "Lỗi doc"), ("info", "Ngoài plan"),
-            ("acc", "Đúng thiết kế"), ("pass", "Đạt"), ("todo", "Chưa kiểm được"), ("na", "Không áp dụng"), ("draft", "Nháp"),
+            ("acc", "Đúng thiết kế"), ("pass", "Đạt"), ("todo", "Chưa kiểm được"), ("na", "Không áp dụng"), ("draft", "Đang tắt"),
         };
 
         static string CaseGroup(CaseStatus s) => s switch

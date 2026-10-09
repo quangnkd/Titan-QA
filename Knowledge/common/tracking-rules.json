@@ -23,6 +23,11 @@
     "appsflyer_id": ["adjust_id"]
   },
 
+  "disabledRules": {
+    "_comment": "Luật đang tắt cho mọi game: Check all và Record không báo mục của các luật này (case tương ứng hiện 'Đang tắt'). Bật lại = xoá khỏi danh sách. flow_property_before_event (TC-009, user property set trước / sau event): QA quyết định bỏ qua (09/10/2026).",
+    "rules": ["flow_property_before_event"]
+  },
+
   "propertyAfterEvent": [
     { "_comment": "User property phải set SAU event tương ứng (theo Master).",
       "property": "^(coin|lives|lives_infinity|booster_\\d+)$", "events": ["resource_update", "view_item", "earn_resource", "spend_resource", "buy_resource"], "rule": "update ngay sau event resource_update" },
