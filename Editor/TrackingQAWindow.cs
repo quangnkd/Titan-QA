@@ -269,8 +269,8 @@ namespace Titan.TrackingQA
                 : !cs.LoggedIn ? "Claude Code chưa đăng nhập — mở terminal, chạy claude để đăng nhập"
                 : $"Check all có Claude review (Claude Code {cs.Version}) — chậm hơn vài phút; xác nhận / bác bỏ mục nghi ngờ, tìm thêm lỗi";
             _claude.label = QaRunner.UseClaude && !QaRunner.ClaudeReady && cs != null ? "Claude (chưa sẵn sàng)" : "Claude";
-            var pending = KnowledgeWindow.PendingCount();
-            _kbBtn.text = pending > 0 ? $"Kho chung · {pending} chờ gửi" : "Kho chung";
+            var (unsent, waiting) = KnowledgeWindow.Counts();
+            _kbBtn.text = unsent > 0 ? $"Kho chung · {unsent} chưa gửi" : waiting > 0 ? $"Kho chung · {waiting} đã gửi" : "Kho chung";
 
             var status = QaRunner.Status;
             if (!running && r != null && !string.IsNullOrEmpty(doc) && !SamePath(r.SpecFile, doc))
