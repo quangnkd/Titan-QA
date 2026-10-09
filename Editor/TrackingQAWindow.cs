@@ -50,12 +50,13 @@ namespace Titan.TrackingQA
         // Phần tử giao diện
         Label _game = null!, _doc = null!, _status = null!, _meta = null!, _coverage = null!, _log = null!;
         Button _checkBtn = null!, _cancelBtn = null!, _androidBtn = null!, _iosBtn = null!, _continueBtn = null!;
-        Button _modeFindings = null!, _modeCases = null!, _modeScenarios = null!;
+        Button _modeFindings = null!, _modeCases = null!, _modeScenarios = null!, _kbBtn = null!;
         ToolbarSearchField _searchField = null!;
         VisualElement _summary = null!, _chips = null!, _detail = null!, _split = null!;
         Foldout _blind = null!;
         Label _empty = null!;
-        Toggle _rejectedToggle = null!, _deviceToggle = null!;
+        Toggle _rejectedToggle = null!, _deviceToggle = null!, _claude = null!;
+        Button _reviewBtn = null!;
         ListView _list = null!;
         ScrollView _detailScroll = null!;
         static Font? _mono;
@@ -96,6 +97,7 @@ namespace Titan.TrackingQA
             _doc.AddToClassList("doc");
             top.Add(_doc);
             top.Add(new Button(PickDoc) { text = "Chọn file tracking…", tooltip = "File Excel tracking plan của game này (mỗi project nhớ file riêng)" });
+            top.Add(new Button(DocWindow.Open) { text = "Doc", tooltip = "Check all hiểu doc thế nào — xem chỗ đọc chưa chắc, bỏ event / param không dùng, sửa kiểu, viết lại giá trị, xác nhận" });
             _androidBtn = new Button(() => { QaRunner.Platform = BuildPlatform.Android; Refresh(); }) { text = "Android" };
             _iosBtn = new Button(() => { QaRunner.Platform = BuildPlatform.iOS; Refresh(); }) { text = "iOS" };
             var seg = Row("seg");
@@ -107,7 +109,23 @@ namespace Titan.TrackingQA
             top.Add(_checkBtn);
             _cancelBtn = new Button(QaRunner.Cancel) { text = "Huỷ" };
             top.Add(_cancelBtn);
+            _claude = new Toggle("Claude") { value = QaRunner.UseClaude };
+            _claude.RegisterValueChangedCallback(e =>
+            {
+                if (e.newValue && !EditorUtility.DisplayDialog("Claude review",
+                        "Khi bật, Check all gửi kết quả phân tích và đoạn code liên quan của project cho Claude (qua Claude Code đang đăng nhập trên máy này — gói Claude của bạn) để xác nhận / bác bỏ mục nghi ngờ và tìm thêm lỗi. Code được gửi tới Anthropic.\n\nBật Claude review?",
+                        "Bật", "Huỷ"))
+                {
+                    _claude.SetValueWithoutNotify(false);
+                    return;
+                }
+                QaRunner.UseClaude = e.newValue;
+                Refresh();
+            });
+            top.Add(_claude);
             top.Add(new Button(RecordWindow.Open) { text = "Record", tooltip = "Mở cửa sổ Record — ghi và kiểm event khi chơi trong Editor (bấm Play là bắt đầu ghi)" });
+            _kbBtn = new Button(KnowledgeWindow.Open) { tooltip = "Chỉnh sửa trên máy (ngoại lệ, case G-xxx, chỉnh doc) chờ gửi lên kho chung cho cả team · học từ chỗ Check all sai" };
+            top.Add(_kbBtn);
             root.Add(top);
 
             _status = new Label();
@@ -129,6 +147,12 @@ namespace Titan.TrackingQA
                 tooltip = "Phân tích tiếp từ đúng các chỗ bị dừng do giới hạn, với giới hạn rộng hơn — không chạy lại từ đầu.",
             };
             covRow.Add(_continueBtn);
+            _reviewBtn = new Button(QaRunner.ReviewWithClaude)
+            {
+                text = "Claude review",
+                tooltip = "Gửi báo cáo đang xem cho Claude review (không phân tích lại code): xác nhận / bác bỏ mục nghi ngờ, tìm thêm lỗi ngữ nghĩa — vài phút",
+            };
+            covRow.Add(_reviewBtn);
             covRow.Add(new VisualElement { style = { flexGrow = 1 } });
             covRow.Add(new Button(OpenHtml) { text = "Mở báo cáo HTML", tooltip = "Báo cáo đầy đủ (kèm bảng từng event) để gửi người khác" });
             _summary.Add(covRow);
@@ -238,6 +262,15 @@ namespace Titan.TrackingQA
             _checkBtn.SetEnabled(!running && File.Exists(doc));
             _checkBtn.text = running ? "Đang chạy…" : "Check all";
             _cancelBtn.style.display = running ? DisplayStyle.Flex : DisplayStyle.None;
+            var cs = QaRunner.ClaudeStatus;
+            _claude.SetEnabled(!running && (QaRunner.ClaudeReady || QaRunner.UseClaude));
+            _claude.tooltip = cs == null ? "Đang kiểm Claude Code trên máy…"
+                : !cs.Found ? "Chưa cài Claude Code (claude.exe) — cài Claude Code rồi đăng nhập để dùng Claude review"
+                : !cs.LoggedIn ? "Claude Code chưa đăng nhập — mở terminal, chạy claude để đăng nhập"
+                : $"Check all có Claude review (Claude Code {cs.Version}) — chậm hơn vài phút; xác nhận / bác bỏ mục nghi ngờ, tìm thêm lỗi";
+            _claude.label = QaRunner.UseClaude && !QaRunner.ClaudeReady && cs != null ? "Claude (chưa sẵn sàng)" : "Claude";
+            var pending = KnowledgeWindow.PendingCount();
+            _kbBtn.text = pending > 0 ? $"Kho chung · {pending} chờ gửi" : "Kho chung";
 
             var status = QaRunner.Status;
             if (!running && r != null && !string.IsNullOrEmpty(doc) && !SamePath(r.SpecFile, doc))
@@ -255,6 +288,8 @@ namespace Titan.TrackingQA
             _continueBtn.style.display = QaRunner.CanContinue ? DisplayStyle.Flex : DisplayStyle.None;
             _continueBtn.text = $"Chạy tiếp điểm mù ({r.Coverage.Truncated})";
             _continueBtn.SetEnabled(!running);
+            _reviewBtn.style.display = QaRunner.ClaudeReady && QaRunner.Session != null && QaRunner.Session.Report == r ? DisplayStyle.Flex : DisplayStyle.None;
+            _reviewBtn.SetEnabled(QaRunner.CanReview);
 
             // Nhật ký cập nhật liên tục khi đang chạy → chỉ vẽ lại danh sách / chi tiết khi báo cáo thật sự đổi
             if (_rendered == QaRunner.Version) return;
@@ -849,7 +884,7 @@ namespace Titan.TrackingQA
             btns.Add(save);
             btns.Add(new Button(() => { _acceptingKey = null; ShowDetail(f); }) { text = "Huỷ" });
             form.Add(btns);
-            form.Add(Muted("Lưu trên máy này, chỉ cho game này. Gửi lên kho chung cho cả team sẽ có ở bản sau."));
+            form.Add(Muted("Lưu trên máy này, chỉ cho game này. Gửi cho cả team: nút “Kho chung” phía trên (tạo PR)."));
             _detail.Add(form);
             var focus = title ?? tf;
             focus.schedule.Execute(() => focus.Focus());

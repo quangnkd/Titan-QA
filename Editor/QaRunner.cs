@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using TrackingChecker.Core;
+using TrackingChecker.Core.Ai;
 using TrackingChecker.Core.Analysis;
 using TrackingChecker.Core.Live;
 using TrackingChecker.Core.Report;
@@ -27,6 +28,31 @@ namespace Titan.TrackingQA
     {
         const string PrefDoc = "Titan.TrackingQA.DocPath.";
         const string PrefPlatform = "Titan.TrackingQA.Platform";
+        const string PrefClaude = "Titan.TrackingQA.UseClaude";
+
+        /// <summary>Check all có gửi cho Claude review không (Claude Code trên máy, gói Claude đang đăng nhập) — tắt mặc định, lưu theo máy.</summary>
+        public static bool UseClaude
+        {
+            get => EditorPrefs.GetBool(PrefClaude, false);
+            set => EditorPrefs.SetBool(PrefClaude, value);
+        }
+
+        /// <summary>Tình trạng Claude Code trên máy (null = đang kiểm).</summary>
+        public static ClaudeCodeRunner.Status? ClaudeStatus { get; private set; }
+        public static bool ClaudeReady => ClaudeStatus is { Found: true, LoggedIn: true };
+
+        public static void RefreshClaudeStatus()
+        {
+            Task.Run(async () =>
+            {
+                ClaudeCodeRunner.Status s;
+                try { s = await ClaudeCodeRunner.GetStatusAsync(); }
+                catch (Exception e) { s = new ClaudeCodeRunner.Status(false, null, null, false, null, e.Message); }
+                Post(() => ClaudeStatus = s);
+            });
+        }
+
+        static AiSettings Ai() => new AiSettings { Provider = "claude-code", CacheDir = Path.Combine(WorkDir, "ai-cache") };
 
         public static string ProjectRoot => Path.GetDirectoryName(Application.dataPath)!;
         public static string WorkDir => Path.Combine(ProjectRoot, "Library", "TrackingQA");
@@ -66,6 +92,7 @@ namespace Titan.TrackingQA
         {
             EditorApplication.update += Pump;
             SetupKnowledge();
+            RefreshClaudeStatus();
         }
 
         static void Pump()
@@ -100,6 +127,8 @@ namespace Titan.TrackingQA
         {
             if (_loaded) return;
             _loaded = true;
+            // Package đã cập nhật (PR kho chung đã merge) → dọn bản trên máy đã có đủ trong kho chung
+            try { KnowledgeShare.CleanLocal(GameId); } catch (Exception e) { Debug.LogWarning("[Tracking QA] Không dọn được bản trên máy: " + e.Message); }
             if (Report != null || !File.Exists(LastReportFile)) return;
             try
             {
@@ -130,9 +159,27 @@ namespace Titan.TrackingQA
         public static void CheckAll(string docPath, BuildPlatform platform) =>
             Run("Check all", ct => CheckRunner.RunSessionAsync(new CheckRequest
             {
-                RepoPath = ProjectRoot, SpecPath = docPath, Platform = platform, UseAi = false,
+                RepoPath = ProjectRoot, SpecPath = docPath, Platform = platform, UseAi = UseClaude && ClaudeReady,
                 UnityInstallPath = Path.GetDirectoryName(EditorApplication.applicationContentsPath),
-            }, null, Log, ct), s => { Session = s; return s.Report; });
+            }, UseClaude && ClaudeReady ? Ai() : null, Log, ct), s => { Session = s; return s.Report; });
+
+        /// <summary>Có thể gửi báo cáo đang xem cho Claude review (còn phiên phân tích trong bộ nhớ, chưa nạp lại script).</summary>
+        public static bool CanReview => Session != null && Session.Report == Report && ClaudeReady && !Running;
+
+        /// <summary>Claude review báo cáo đang xem (không phân tích lại code): xác nhận / bác bỏ mục nghi ngờ, tìm thêm lỗi ngữ nghĩa.</summary>
+        public static void ReviewWithClaude()
+        {
+            var s = Session;
+            if (s == null) return;
+            Run("Claude review", async ct =>
+            {
+                using var _ = Knowledge.ForGame(s.Report.GameId);
+                await new AiReviewer(Ai(), Log).ReviewAsync(s.Report, s.Analysis, s.Spec, ct);
+                Explainer.ApplyToAiFindings(s.Report, s.Analysis);
+                CaseEngine.Apply(s.Report, s.Spec);
+                return s.Report;
+            }, r => r);
+        }
 
         public static bool CanContinue => Session != null && Session.Report == Report && Report?.Coverage.Truncated > 0;
 
@@ -164,7 +211,7 @@ namespace Titan.TrackingQA
                     Post(() =>
                     {
                         // So với lần check trước (mục mới / đã sửa), băm file code có mục báo (để báo "code đã đổi")
-                        try { ReportDiff.Compare(Report, r); ReportDiff.HashFiles(r); }
+                        try { if (!ReferenceEquals(Report, r)) { ReportDiff.Compare(Report, r); ReportDiff.HashFiles(r); } }
                         catch (Exception e) { Debug.LogWarning("[Tracking QA] Không so được với lần check trước: " + e.Message); }
                         // Ghép kết quả Record (xác nhận / bác bỏ / không tái hiện) — lưu theo mã ổn định nên giữ qua các lần Check all;
                         // và các lỗi Record còn mở (bảng Lỗi Record) để xem chung
@@ -211,6 +258,18 @@ namespace Titan.TrackingQA
         {
             if (Report == null) return;
             RecordFeedback.Apply(Report, fb);
+            Version++;
+            Save();
+            Changed?.Invoke();
+        }
+
+        /// <summary>Kiến thức trên máy đổi (dọn sau khi kho chung đã có, đổi mã case…) → gắn lại case + ngoại lệ cho báo cáo đang xem.</summary>
+        public static void ReapplyKnowledge()
+        {
+            Knowledge.ClearCache();
+            if (Report == null) return;
+            CaseEngine.Retag(Report);
+            GameData.ApplyExceptions(Report);
             Version++;
             Save();
             Changed?.Invoke();

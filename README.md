@@ -2,19 +2,23 @@
 
 Package Unity kiểm tra tracking Firebase của game **từ source code**, so với file tracking plan (Excel) — ngay trong Unity Editor. Chỉ chạy trong Editor: không vào bản build, không cần sửa code game, không cần cắm điện thoại.
 
-> Trạng thái: **0.1.0 — thử nghiệm**. Lõi phân tích đã chạy được trong Unity 6.3 (BlossomMatch: ~23–34s, ~220–280 MB bộ nhớ managed, không xung đột thư viện) và ra cùng kết quả với app Tracking Checker. Chưa dùng cho QA.
+> Trạng thái: **thử nghiệm** (đã chạy trên BlossomMatch và TileFruits, Unity 6.3). Lõi phân tích ra cùng kết quả với app Tracking Checker.
 
-## Cài vào game (đang phát triển)
+## Cài vào game
 
-Thêm vào `Packages/manifest.json` của game (đường dẫn tương đối tới thư mục package trên máy):
+Thêm vào `Packages/manifest.json` của game (repo private — máy cần quyền đọc repo, giống các package Titan khác):
 
 ```json
-"com.titan.tracking-qa": "file:../../TitanTrackingQA",
+"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.6.0",
 ```
+
+Đang sửa package thì trỏ tạm về thư mục trên máy: `"file:../../TitanTrackingQA"`.
 
 Menu **Titan → QAUTO**:
 - **Tracking QA CheckAll** — đọc code, so với doc (không cần chạy game).
-- **Tracking QA Record** — ghi và kiểm event khi chơi trong Editor.
+- **Tracking QA Record** — ghi và kiểm event khi chơi trong Editor (bấm Play là tự ghi, không cần mở cửa sổ).
+- **Tracking QA Kho chung** — gửi chỉnh sửa trên máy (ngoại lệ, case G-xxx, chỉnh doc) cho cả team bằng PR; học từ chỗ Check all sai.
+- **Tracking QA Doc** — Check all hiểu file tracking thế nào; sửa / xác nhận chỗ đọc chưa chắc.
 
 ### Check all
 
@@ -30,6 +34,24 @@ Chọn file tracking (Excel), bấm **Check all** (chạy ngầm ~30s, Editor v�
 - Lỗi không tự mất: chỉ rời danh sách khi Check all chạy lại không còn thấy (vào "Đã sửa so với lần trước"), khi lưu ngoại lệ, khi Record bác bỏ (bộ lọc "Record bác bỏ"), hoặc khi chỉ gặp trong Editor / cheat (ẩn, xem lại được).
 - **Chạy tiếp điểm mù**: phân tích tiếp từ chỗ bị dừng do giới hạn (không chạy lại từ đầu).
 - **Mở báo cáo HTML** để gửi người khác.
+- **Claude** (tắt mặc định, hỏi trước khi bật): Check all gửi kết quả + đoạn code liên quan cho Claude qua **Claude Code đang đăng nhập trên máy** (gói Claude của bạn, không cần API key) để xác nhận / bác bỏ mục nghi ngờ và tìm thêm lỗi; nút **Claude review** gửi báo cáo đang xem mà không phân tích lại. Code được gửi tới Anthropic.
+- **Doc**: danh sách event / param / user property Check all đọc được, chỗ đọc chưa chắc (không rõ kiểu, mô tả có vẻ liệt kê giá trị nhưng không tách được…), giá trị hợp lệ Check all hiểu. Sửa tại chỗ: bỏ event / param game không dùng, sửa kiểu, viết lại giá trị (`0-thua; 1-thắng`) → **Lưu & xác nhận** (theo game + tên file doc, không sửa Excel), áp dụng ở lần Check all / Record sau.
+
+### Kho chung (gửi cho cả team)
+
+Ngoại lệ (Đúng thiết kế / Check all báo nhầm), case `G-xxx`, chỉnh doc lưu **trên máy** (`UserSettings/TrackingQA/knowledge-local`) và có hiệu lực ngay trên máy đó. Nút **Kho chung · N chờ gửi** (cửa sổ CheckAll) → xem trước → **Gửi lên kho chung (tạo PR)**:
+- clone repo package vào thư mục riêng (`%LOCALAPPDATA%/TitanTrackingQA/kb-repo`, không đụng project game), tạo nhánh `kb/<game>-<thời điểm>`, ghi vào `Knowledge/games/<bundle id>/` (ngoại lệ ghép theo mã, case trùng mã tự đổi sang mã trống, tạo `.meta`), push, tạo PR bằng GitHub CLI (`gh`) — không có `gh` thì mở trang tạo PR trên trình duyệt. Dùng quyền git trên máy; token trong URL không ghi ra log;
+- nội dung PR gồm từng chỉnh sửa + **tổng hợp báo nhầm** theo luật (để sửa luật chung);
+- người duyệt merge PR → phát hành bản package mới → các máy cập nhật package thì bản trên máy đã có trong kho chung được tự dọn.
+
+Tab **Học từ chỗ Check all sai**: báo nhầm theo luật + lý do (code rác, Remote Config, lần sai luồng, chỉ Editor) qua mọi game có dữ liệu, gợi ý sửa luật; các thao tác Record lệch log giả lập. (Ở repo TrackingChecker: `tc learn --dir <Knowledge>`.)
+
+### Chạy không mở giao diện (CI / máy build)
+
+```
+Unity.exe -batchmode -projectPath <game> -executeMethod Titan.TrackingQA.Batch.CheckAll -trackingDoc <plan.xlsx> [-trackingPlatform iOS] [-trackingOut <thư mục>] -logFile -
+```
+Ra `report.json`, `report.html`, `summary.txt` (mặc định `Library/TrackingQA/batch`), kèm kiểm tra Record gắn được vào Titan của game. Mã thoát: 0 = không có Lỗi, 2 = có Lỗi, 1 = không chạy được.
 
 ### Record
 
@@ -57,13 +79,14 @@ Báo cáo Check all gần nhất lưu ở `Library/TrackingQA/last-report.json` 
 
 ```
 Recorder/            nghe event qua Titan khi Play (chỉ trong Editor)
-Editor/              cửa sổ Tracking QA (UI Toolkit, chỉ Editor): TrackingQAWindow, QaRunner (chạy ngầm, lưu báo cáo), CodeNav (mở code)
+Editor/              cửa sổ Tracking QA (UI Toolkit, chỉ Editor): TrackingQAWindow, RecordWindow, KnowledgeWindow (kho chung), DocWindow,
+                     QaRunner (chạy ngầm, lưu báo cáo), RecordController, Batch (chạy không giao diện), CodeNav (mở code)
 Editor/Plugins/      lõi phân tích (TrackingChecker.Core, build netstandard2.1) + thư viện đi kèm (Roslyn, đọc Excel)
 Knowledge/common/    kiến thức chung cho mọi game (cases/ = kho case TC-xxx)
 Knowledge/games/     kiến thức riêng từng game (theo bundle id)
 ```
 
-Lõi phân tích và kho kiến thức được phát triển + kiểm thử ở repo `TrackingChecker` (test + bộ game chuẩn). Cập nhật package = build lõi `netstandard2.1` ở đó rồi chép DLL + `knowledge/` sang đây.
+Lõi phân tích và kiến thức chung được phát triển + kiểm thử ở repo `TrackingChecker` (test + bộ game chuẩn). Cập nhật package = build lõi `netstandard2.1` ở đó rồi chép DLL + `knowledge/common/` sang đây. **`Knowledge/games/` là của kho chung ở repo này** (QA gửi qua PR) — không chép đè từ TrackingChecker.
 
 ## Kế hoạch
 
@@ -74,4 +97,4 @@ Lõi phân tích và kho kiến thức được phát triển + kiểm thử ở
 5. ✅ Log giả lập theo kịch bản (chế độ **Kịch bản**): thắng / thua / chơi lại / về Home / thoát app / hồi sinh + kịch bản nhiều bước (`Knowledge/common/scenarios.json`)
 6. ✅ TC-035: đổi tài nguyên phải có `resource_update` · lọc lỗi chỉ gặp trong Editor / bản debug / nút cheat
 7. ✅ Record khi chơi trong Editor — ✅ R1 (v0.2.0): nghe event, kiểm theo doc, bỏ qua lỗi đã biết, lưu phiên · ✅ R2 (v0.3.0): ghi bước bấm + kiểm theo kho case + đối chiếu Check all · ✅ R3 (v0.4.0): bảng Lỗi Record gộp qua phiên, so với lần check trước, code đã đổi, lưu case G-xxx, Check all báo nhầm có lý do · ✅ R4 (v0.5.0): so với log giả lập, ẩn lỗi do cheat
-8. Gửi case lên kho chung (PR)
+8. ✅ (v0.6.0) Gửi lên kho chung bằng PR · học từ chỗ Check all sai · cửa sổ Doc · Claude review · chạy batch (CI) · thử trên TileFruits
