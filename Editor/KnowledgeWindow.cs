@@ -301,6 +301,36 @@ namespace Titan.TrackingQA
             catch (Exception e) { _body.Add(Muted("Không tổng hợp được: " + e.Message)); }
 
             var fb = RecordFeedback.Load(RecordController.FeedbackPath);
+            // --- Đề xuất nâng case riêng game thành case chung
+            try
+            {
+                var games = Knowledge.KnownGames();
+                if (game != null && !games.Contains(game)) games.Add(game);
+                var promos = Learning.CasePromotions(games);
+                _body.Add(Section($"Đề xuất nâng thành case chung ({promos.Count(p => p.CoveredBy.Count == 0)})"));
+                if (promos.Count == 0) _body.Add(Muted("Chưa có case riêng game (G-xxx) nào giống nhau ở từ 2 game. Khi QA ở nhiều game lưu case giống nhau, đề xuất sẽ hiện ở đây."));
+                foreach (var p in promos)
+                {
+                    var box = new VisualElement();
+                    box.AddToClassList("trace");
+                    var list = string.Join(", ", p.Cases.Select(c => $"{c.Id} ({c.Game})"));
+                    var text = p.CoveredBy.Count > 0
+                        ? $"<b>{p.Label}</b> — đã có case chung {string.Join(", ", p.CoveredBy)} bao → có thể bỏ {list}"
+                        : $"<b>{p.Label}</b> — gặp ở {p.GameCount} game: {list} → đề xuất nâng thành TC chung";
+                    box.Add(Para(text));
+                    foreach (var t in p.Cases.Select(c => c.Title).Distinct().Take(3)) box.Add(Muted("“" + t + "”"));
+                    var req = p.CoveredBy.Count > 0
+                        ? $"Bỏ case riêng {list} vì case chung {string.Join(", ", p.CoveredBy)} đã bao ({p.Label.Replace("`", "")})."
+                        : $"Nâng thành case chung: {p.Label.Replace("`", "")} — gặp ở {p.GameCount} game ({list}). Soạn TC, chạy bộ game chuẩn, gửi PR để duyệt.";
+                    box.Add(new Button(() => { EditorGUIUtility.systemCopyBuffer = req; _status.text = "Đã copy — dán cho Claude để làm."; _status.style.display = DisplayStyle.Flex; })
+                    {
+                        text = "Copy yêu cầu", tooltip = req,
+                    });
+                    _body.Add(box);
+                }
+            }
+            catch (Exception e) { _body.Add(Muted("Không tổng hợp được đề xuất: " + e.Message)); }
+
             var diffs = fb.Scenarios.Values.Where(x => x.Diffs > 0).OrderByDescending(x => x.Diffs).ToList();
             if (diffs.Count > 0)
             {
@@ -328,7 +358,7 @@ namespace Titan.TrackingQA
             {
                 var games = Knowledge.KnownGames();
                 if (game != null && !games.Contains(game)) games.Add(game);
-                learning = Learning.Markdown(Learning.Collect(games));
+                learning = Learning.Markdown(Learning.Collect(games)) + Environment.NewLine + Learning.PromotionsMarkdown(Learning.CasePromotions(games));
             }
             catch { learning = ""; }
             var req = new KnowledgePublisher.Request { RepoUrl = url, WorkDir = WorkDir, Game = game, Author = Environment.UserName, Learning = learning };

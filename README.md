@@ -9,7 +9,7 @@ Package Unity kiểm tra tracking Firebase của game **từ source code**, so v
 Thêm vào `Packages/manifest.json` của game (repo private — máy cần quyền đọc repo, giống các package Titan khác):
 
 ```json
-"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.7.0",
+"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.7.1",
 ```
 
 Đang sửa package thì trỏ tạm về thư mục trên máy: `"file:../../TitanTrackingQA"`.
@@ -43,6 +43,8 @@ Ngoại lệ (Đúng thiết kế / Check all báo nhầm), case `G-xxx`, chỉn
 - clone repo package vào thư mục riêng (`%LOCALAPPDATA%/TitanTrackingQA/kb-repo`, không đụng project game), tạo nhánh `kb/<game>-<thời điểm>`, ghi vào `Knowledge/games/<bundle id>/` (ngoại lệ ghép theo mã, case trùng mã tự đổi sang mã trống, tạo `.meta`), push, tạo PR bằng GitHub CLI (`gh`) — không có `gh` thì mở trang tạo PR trên trình duyệt. Dùng quyền git trên máy; token trong URL không ghi ra log;
 - nội dung PR gồm từng chỉnh sửa + **tổng hợp báo nhầm** theo luật (để sửa luật chung);
 - người duyệt merge PR → phát hành bản package mới → các máy cập nhật package thì bản trên máy đã có trong kho chung được tự dọn.
+
+**Đề xuất nâng thành case chung**: case riêng game (G-xxx) giống nhau (cùng luật, event, param) ở từ 2 game → 1 đề xuất nâng thành TC chung; case riêng đã có case chung bao → gợi ý bỏ. Hiện trong cửa sổ Kho chung (nút "Copy yêu cầu" để nhờ Claude soạn TC + chạy bộ game chuẩn), trong nội dung PR và `tc learn`. Không tự nâng — người duyệt quyết.
 
 Tab **Học từ chỗ Check all sai**: báo nhầm theo luật + lý do (code rác, Remote Config, lần sai luồng, chỉ Editor) qua mọi game có dữ liệu, gợi ý sửa luật; các thao tác Record lệch log giả lập. (Ở repo TrackingChecker: `tc learn --dir <Knowledge>`.)
 
