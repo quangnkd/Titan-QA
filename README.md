@@ -9,7 +9,7 @@ Package Unity kiểm tra tracking Firebase của game **từ source code**, so v
 Thêm vào `Packages/manifest.json` của game (repo private — máy cần quyền đọc repo, giống các package Titan khác):
 
 ```json
-"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.7.1",
+"com.titan.tracking-qa": "https://github.com/quangnkd/Titan-QA.git#v0.7.2",
 ```
 
 Đang sửa package thì trỏ tạm về thư mục trên máy: `"file:../../TitanTrackingQA"`.
@@ -72,7 +72,7 @@ Bấm **Play** là bắt đầu ghi (tắt được bằng "Tự Record khi Play
 - **Lỗi tổng hợp** (bảng Lỗi Record, `UserSettings/TrackingQA/record-issues.json`): lỗi mới (Check all chưa báo) cộng dồn qua mọi phiên — mã `R001…`, số lần gặp, số phiên, các bước bấm trước lần gặp đầu, mở đúng chỗ trong dòng thời gian. Trạng thái:
   - **Mới** → đi lại đúng chỗ đó (cùng đường gọi, cùng nút) 2 lần không còn lỗi → **Đã sửa?** (chưa đóng) → QA bấm **Xác nhận đã sửa**;
   - đã đóng / Đã sửa? mà gặp lại → **Gặp lại**; **Bỏ qua** thì gặp lại chỉ đếm số lần;
-  - file code chỗ bắn đổi → nhãn "code đã đổi — có thể đã sửa".
+  - mỗi lần Check all / mở cửa sổ, so **mọi file code trên đường gọi** với lúc gặp lỗi: y nguyên → **vẫn còn** (chạy lại ra y như cũ, không cần chơi lại); có file đổi → **code đã đổi — chơi lại để xác nhận**; hàm / file trên đường gọi không còn → **có thể đã sửa**.
   Lỗi Record còn mở cũng hiện trong cửa sổ CheckAll (chip **Chỉ lỗi Record**) và tính vào kết quả **Theo case**; Đúng thiết kế / lưu case G-xxx làm được ở cả 2 cửa sổ.
 - Ghi bước **⏸ Rời cửa sổ game / ▶ Quay lại** (OnApplicationFocus / OnApplicationPause): bấm ra ngoài cửa sổ Game trong Editor = app xuống nền trên máy thật. Event game bắn lúc đó (vd `level_exit` ngay sau `level_start`) được ghi chú "(rời focus)" — đúng là phải bắn, không phải lỗi.
 - Trong Editor không có: quảng cáo thật, `screen_view` tự động, param Firebase tự thêm (`firebase_*`, `ga_session_*`, `fps`).

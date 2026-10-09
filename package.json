@@ -1,6 +1,6 @@
 {
   "name": "com.titan.tracking-qa",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "displayName": "Titan Tracking QA",
   "description": "Kiểm tra tracking Firebase của game từ source code so với file tracking plan (Excel), ngay trong Unity Editor. Chỉ chạy trong Editor — không vào bản build, không cần sửa code game.",
   "unity": "6000.3",

@@ -367,7 +367,7 @@ namespace Titan.TrackingQA
                 var acc = IsAccepted(it);
                 pl.text = acc ? "Đúng thiết kế" : RecordIssueLog.StatusLabel(it.Status);
                 pl.AddToClassList(acc ? "acc" : IssuePill(it.Status));
-                row.Q<Label>(className: "fid").text = $"{it.Id} · ×{it.Count} · {it.SessionCount} phiên" + (it.Stack.Count > 0 ? " · " + it.Stack[0].Member : "") + (it.CodeChanged ? " · code đã đổi" : "");
+                row.Q<Label>(className: "fid").text = $"{it.Id} · ×{it.Count} · {it.SessionCount} phiên" + (it.Stack.Count > 0 ? " · " + it.Stack[0].Member : "") + (it.CodeState switch { "same" => " · vẫn còn", "changed" => " · code đã đổi", "removed" => " · có thể đã sửa", _ => "" });
                 row.Q<Label>(className: "subj").text = it.Subject;
                 row.Q<Label>(className: "row-title").text = it.Text;
                 row.tooltip = it.Text;
@@ -540,7 +540,9 @@ namespace Titan.TrackingQA
             head.Add(Tag((it.Kind == "property" ? "property " : "") + it.Subject));
             head.Add(Tag(it.Level == "error" ? "lỗi" : "cần xem"));
             head.Add(Tag($"gặp {it.Count} lần · {it.SessionCount} phiên"));
-            if (it.CodeChanged) head.Add(Tag("code đã đổi — có thể đã sửa", "rec-ok", $"File {it.CodeFile} đã đổi từ lần gặp gần nhất"));
+            if (it.CodeStateLabel != null && !it.IsClosed)
+                head.Add(Tag(it.CodeStateLabel, it.CodeState == "same" ? "rec-no" : "rec-ok",
+                    it.CodeState == "same" ? "Mọi file code trên đường gọi y nguyên từ lần gặp gần nhất → chạy lại sẽ ra y như cũ" : "Đã đổi: " + string.Join(", ", it.CodeChangedFiles)));
             _detail.Add(head);
 
             var title = new Label(it.Text);
@@ -553,8 +555,12 @@ namespace Titan.TrackingQA
                                  + (it.StatusBy != null ? $" · {it.StatusBy}" : "") + (it.StatusAt is { } at ? $" · {at:dd/MM HH:mm}" : ""), "detail-text"));
             if (it.Status is RecordIssueStatus.New or RecordIssueStatus.Reopened && it.CleanPasses > 0)
                 _detail.Add(Muted($"Đã đi lại đúng chỗ đó {it.CleanPasses} lần không lỗi (gần nhất {it.LastCleanPass}) — {RecordIssueLog.CleanPassesToMaybeFixed} lần thì chuyển Đã sửa?"));
-            if (it.CodeChanged)
-                _detail.Add(Para($"File code chỗ bắn ({it.CodeFile}) đã đổi từ lần gặp gần nhất — có thể đã sửa. Chơi lại các bước bên dưới để kiểm.", "detail-text"));
+            if (!it.IsClosed && it.CodeState == "same")
+                _detail.Add(Para($"<b>Vẫn còn:</b> {it.CodeHashes.Count} file code trên đường gọi y nguyên từ lần gặp gần nhất — chạy lại sẽ ra lỗi y như cũ, không cần chơi lại (trừ khi lỗi phụ thuộc dữ liệu người chơi / Remote Config).", "detail-text"));
+            else if (!it.IsClosed && it.CodeState == "changed")
+                _detail.Add(Para($"<b>Code đã đổi</b> ({string.Join(", ", it.CodeChangedFiles)}) — dev đã sửa chỗ này. Chơi lại các bước bên dưới để xác nhận.", "detail-text"));
+            else if (!it.IsClosed && it.CodeState == "removed")
+                _detail.Add(Para($"<b>Có thể đã sửa:</b> luồng gây lỗi đã bị xoá ({string.Join(", ", it.CodeChangedFiles)}). Chơi lại các bước bên dưới để đóng lỗi.", "detail-text"));
 
             // Thao tác của QA
             if (accepted is { } a)

@@ -231,6 +231,7 @@ namespace Titan.TrackingQA
                         }
                         catch (Exception e) { Debug.LogWarning("[Tracking QA] Không ghép được kết quả Record: " + e.Message); }
                         Report = r;
+                        CheckCodeChanges(notify: false);
                         Version++;
                         Save();
                         Status = Summary(r) + $" · {(DateTime.Now - started).TotalSeconds:F0}s";
@@ -299,6 +300,13 @@ namespace Titan.TrackingQA
 
         static readonly Dictionary<string, (DateTime Time, string? Hash)> Hashes = new Dictionary<string, (DateTime, string?)>();
 
+        /// <summary>Nội dung file code (đường dẫn tương đối project) — để biết hàm trên đường gọi còn không.</summary>
+        static string? ReadText(string rel)
+        {
+            try { var p = Path.Combine(ProjectRoot, rel); return File.Exists(p) ? File.ReadAllText(p) : null; }
+            catch { return null; }
+        }
+
         /// <summary>Mã băm file code (đường dẫn tương đối project) — nhớ theo thời điểm sửa file để không băm lại mỗi event.</summary>
         public static string? FileHash(string rel)
         {
@@ -313,16 +321,19 @@ namespace Titan.TrackingQA
         /// <summary>Đánh dấu mục (Check all + lỗi Record) có file code đã đổi từ lúc check / lúc gặp — gọi khi mở / quay lại cửa sổ.</summary>
         public static void CheckCodeChanges(bool notify = true)
         {
-            if (Report == null) return;
             bool changed;
             try
             {
-                changed = ReportDiff.MarkChanged(Report);
-                changed |= RecordController.Issues.MarkCodeChanged(FileHash);
+                // Lỗi Record: so mọi file trên đường gọi với lúc gặp → vẫn còn / code đã đổi / có thể đã sửa (không cần chơi lại)
+                changed = RecordController.Issues.MarkCodeChanged(FileHash, ReadText);
+                if (changed) RecordController.Touch();
+                if (Report == null) return;
+                changed |= ReportDiff.MarkChanged(Report);
                 foreach (var f in Report.Findings.Where(f => f.RecordIssueId != null))
                 {
-                    var flag = RecordController.Issues.Items.FirstOrDefault(x => x.Id == f.RecordIssueId)?.CodeChanged == true;
-                    if (f.CodeChanged != flag) { f.CodeChanged = flag; changed = true; }
+                    if (RecordController.Issues.Items.FirstOrDefault(x => x.Id == f.RecordIssueId) is not { } it) continue;
+                    var status = RecordIssueLog.StatusLabel(it.Status) + (it.CodeStateLabel != null ? " · " + it.CodeStateLabel : "");
+                    if (f.CodeChanged != it.CodeChanged || f.RecordStatus != status) { f.CodeChanged = it.CodeChanged; f.RecordStatus = status; changed = true; }
                 }
             }
             catch (Exception e) { Debug.LogWarning("[Tracking QA] Không kiểm được thay đổi code: " + e.Message); return; }
