@@ -102,7 +102,8 @@ namespace Titan.TrackingQA
             if (any) Changed?.Invoke();
         }
 
-        static void Post(Action a) => MainThread.Enqueue(a);
+        /// <summary>Chạy việc trên luồng chính của Unity (từ luồng nền).</summary>
+        public static void Post(Action a) => MainThread.Enqueue(a);
 
         static void Log(string s) => Post(() =>
         {
@@ -156,12 +157,18 @@ namespace Titan.TrackingQA
             catch (Exception e) { Debug.LogWarning("[Tracking QA] Không lưu được báo cáo: " + e.Message); }
         }
 
-        public static void CheckAll(string docPath, BuildPlatform platform) =>
-            Run("Check all", ct => CheckRunner.RunSessionAsync(new CheckRequest
+        public static void CheckAll(string docPath, BuildPlatform platform)
+        {
+            // Đọc cài đặt / API Unity trên luồng chính (EditorPrefs, đường dẫn…) — phần chạy ngầm không được gọi API Unity
+            var useAi = UseClaude && ClaudeReady;
+            var req = new CheckRequest
             {
-                RepoPath = ProjectRoot, SpecPath = docPath, Platform = platform, UseAi = UseClaude && ClaudeReady,
+                RepoPath = ProjectRoot, SpecPath = docPath, Platform = platform, UseAi = useAi,
                 UnityInstallPath = Path.GetDirectoryName(EditorApplication.applicationContentsPath),
-            }, UseClaude && ClaudeReady ? Ai() : null, Log, ct), s => { Session = s; return s.Report; });
+            };
+            var ai = useAi ? Ai() : null;
+            Run("Check all", ct => CheckRunner.RunSessionAsync(req, ai, Log, ct), s => { Session = s; return s.Report; });
+        }
 
         /// <summary>Có thể gửi báo cáo đang xem cho Claude review (còn phiên phân tích trong bộ nhớ, chưa nạp lại script).</summary>
         public static bool CanReview => Session != null && Session.Report == Report && ClaudeReady && !Running;
@@ -171,10 +178,11 @@ namespace Titan.TrackingQA
         {
             var s = Session;
             if (s == null) return;
+            var ai = Ai(); // trên luồng chính
             Run("Claude review", async ct =>
             {
                 using var _ = Knowledge.ForGame(s.Report.GameId);
-                await new AiReviewer(Ai(), Log).ReviewAsync(s.Report, s.Analysis, s.Spec, ct);
+                await new AiReviewer(ai, Log).ReviewAsync(s.Report, s.Analysis, s.Spec, ct);
                 Explainer.ApplyToAiFindings(s.Report, s.Analysis);
                 CaseEngine.Apply(s.Report, s.Spec);
                 return s.Report;

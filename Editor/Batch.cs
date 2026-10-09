@@ -37,11 +37,12 @@ namespace Titan.TrackingQA
                 Directory.CreateDirectory(outDir);
                 Debug.Log($"[Tracking QA] Check all (batch): {QaRunner.ProjectRoot} · {doc} · {platform}");
                 // Chạy trong Task.Run: luồng chính của Unity đang chờ → không để phần tiếp theo của await quay về luồng chính (treo)
-                var session = Task.Run(() => CheckRunner.RunSessionAsync(new CheckRequest
+                var req = new CheckRequest
                 {
                     RepoPath = QaRunner.ProjectRoot, SpecPath = doc, Platform = platform, UseAi = false,
                     UnityInstallPath = Path.GetDirectoryName(EditorApplication.applicationContentsPath),
-                }, null, s => Console.WriteLine("[Tracking QA] " + s))).GetAwaiter().GetResult();
+                };
+                var session = Task.Run(() => CheckRunner.RunSessionAsync(req, null, s => Console.WriteLine("[Tracking QA] " + s))).GetAwaiter().GetResult();
                 var r = session.Report;
                 File.WriteAllText(Path.Combine(outDir, "report.json"), JsonSerializer.Serialize(r), Encoding.UTF8);
                 File.WriteAllText(Path.Combine(outDir, "report.html"), HtmlReport.Render(r), Encoding.UTF8);

@@ -238,10 +238,10 @@ namespace Titan.TrackingQA
             {
                 try
                 {
-                    var res = await KnowledgePublisher.PublishAsync(req, s => EditorApplication.delayCall += () => { if (_status != null) _status.text = s; });
-                    EditorApplication.delayCall += () => Done(res, null);
+                    var res = await KnowledgePublisher.PublishAsync(req, s => QaRunner.Post(() => { if (_status != null) _status.text = s; }));
+                    QaRunner.Post(() => Done(res, null));
                 }
-                catch (Exception e) { EditorApplication.delayCall += () => Done(null, e); }
+                catch (Exception e) { QaRunner.Post(() => Done(null, e)); }
             });
         }
 
