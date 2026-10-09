@@ -284,6 +284,36 @@ namespace Titan.TrackingQA
                 }
             }
 
+            // --- Ngoại lệ đang có hiệu lực (CheckAll không hiện mục đã chấp nhận → bỏ ở đây nếu lỡ đánh nhầm)
+            if (game != null)
+            {
+                Dictionary<string, (GameData.AcceptedEntry E, bool Pending)> ex;
+                try { ex = GameData.Exceptions(game); } catch { ex = new Dictionary<string, (GameData.AcceptedEntry, bool)>(); }
+                _body.Add(Section($"Ngoại lệ của game ({ex.Count})"));
+                if (ex.Count == 0) _body.Add(Muted("Chưa có mục nào đánh Đúng thiết kế / Check all báo nhầm."));
+                foreach (var (key, (e, pending)) in ex.OrderBy(x => x.Value.E.Subject, StringComparer.Ordinal))
+                {
+                    var row = Row("ev");
+                    row.style.flexWrap = Wrap.Wrap;
+                    var isFp = e.Kind == "false_positive";
+                    var pill = new Label(isFp ? "Báo nhầm" : "Đúng thiết kế");
+                    pill.AddToClassList("pill");
+                    pill.AddToClassList(isFp ? "info" : "acc");
+                    row.Add(pill);
+                    var text = Para($"  <b>{e.Subject}</b> · {e.Rule} — {(isFp ? GameData.CauseLabel(e.Cause) + " · " : "")}{e.Reason}{(e.By != null ? $" ({e.By})" : "")}{(pending ? "  <i>trên máy</i>" : "  <i>kho chung</i>")}  ");
+                    text.tooltip = e.Title;
+                    row.Add(text);
+                    var k = key;
+                    row.Add(new Button(() =>
+                    {
+                        if (!EditorUtility.DisplayDialog("Bỏ ngoại lệ", $"Bỏ ngoại lệ “{e.Title}”?\nMục này sẽ hiện lại trong CheckAll." + (pending ? "" : "\nNgoại lệ đang ở kho chung → việc bỏ cũng cần gửi lên kho chung."), "Bỏ", "Huỷ")) return;
+                        QaRunner.UnacceptKey(k);
+                        Render();
+                    }) { text = "Bỏ", tooltip = "Bỏ ngoại lệ này — mục hiện lại trong CheckAll" });
+                    _body.Add(row);
+                }
+            }
+
             // --- Học từ chỗ Check all sai
             _body.Add(Section("Học từ chỗ Check all sai"));
             try

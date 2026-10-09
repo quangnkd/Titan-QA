@@ -394,6 +394,20 @@ namespace Titan.TrackingQA
             Changed?.Invoke();
         }
 
+        /// <summary>Bỏ 1 ngoại lệ theo mã (từ danh sách ngoại lệ trong cửa sổ Kho chung).</summary>
+        public static void UnacceptKey(string key)
+        {
+            var game = Report?.GameId ?? GameId;
+            if (game == null) return;
+            GameData.Unaccept(game, key);
+            RecordController.Touch();
+            if (Report == null) return;
+            GameData.ApplyExceptions(Report);
+            Version++;
+            Save();
+            Changed?.Invoke();
+        }
+
         public static void Unaccept(Finding f)
         {
             var game = Report?.GameId ?? GameId;
