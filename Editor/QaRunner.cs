@@ -378,6 +378,38 @@ namespace Titan.TrackingQA
             return id;
         }
 
+        /// <summary>Bỏ case G-xxx (hỏi xác nhận): chỉ có trên máy → xoá; đã ở kho chung → chỉnh sửa chờ gửi. Mục lại hiện nút "Lưu thành case".</summary>
+        public static bool RemoveCase(string id)
+        {
+            var game = Report?.GameId ?? GameId;
+            if (game == null) return false;
+            var local = GameData.IsLocalOnlyCase(game, id);
+            if (!EditorUtility.DisplayDialog("Bỏ case " + id,
+                    local ? $"Xoá case {id} (mới lưu trên máy, chưa gửi lên kho chung)?"
+                          : $"Bỏ case {id} cho game này?\nCase đang ở kho chung: việc bỏ thành chỉnh sửa chờ gửi (nút Kho chung) để cả team cùng bỏ.",
+                    "Bỏ case", "Huỷ")) return false;
+            using (Knowledge.ForGame(game)) GameData.RemoveCase(game, id);
+            ForgetCase(id);
+            return true;
+        }
+
+        /// <summary>Case không còn (bỏ / huỷ chỉnh sửa; id null = xét mọi case) → gỡ khỏi lỗi Record đã lưu, gắn lại mã case trong báo cáo.</summary>
+        public static void ForgetCase(string? id)
+        {
+            var touched = false;
+            var game = Report?.GameId ?? GameId;
+            Knowledge.ClearCache();
+            var live = id == null && game != null ? CaseEngine.Load(game).Where(c => c.Status != "retired").Select(c => c.Id).ToHashSet() : null;
+            foreach (var it in RecordController.Issues.Items.Where(x => x.SavedCaseId != null && (id == null || x.SavedCaseId == id)))
+            {
+                if (live != null && live.Contains(it.SavedCaseId!)) continue;
+                it.SavedCaseId = null;
+                touched = true;
+            }
+            if (touched) { RecordController.SaveIssues(); RecordController.Touch(); }
+            ReapplyKnowledge();
+        }
+
         // ------------------------------------------------------------------ Đúng thiết kế / Check all báo nhầm
 
         /// <summary>Lưu ngoại lệ của game. kind = "false_positive" khi Check all báo nhầm (cause = vì sao, để học); null = đúng thiết kế.</summary>

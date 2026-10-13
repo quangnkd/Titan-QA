@@ -847,13 +847,23 @@ namespace Titan.TrackingQA
                         text = "Check all báo nhầm…",
                         tooltip = "Check all đoán sai (code rác, giá trị cấu hình Firebase…) — lưu ngoại lệ kèm lý do để học, sửa luật.",
                     });
-                row.Add(new Button(() => Open("case"))
-                {
-                    text = "Lưu thành case G-xxx…",
-                    tooltip = "Lưu thành case riêng của game — các lần Check all / Record sau gắn mã case này; sau có thể nâng thành case chung TC.",
-                });
+                var saved = GameData.GameCaseOf(f);
+                if (saved == null)
+                    row.Add(new Button(() => Open("case"))
+                    {
+                        text = "Lưu thành case G-xxx…",
+                        tooltip = "Lưu thành case riêng của game — các lần Check all / Record sau gắn mã case này; sau có thể nâng thành case chung TC.",
+                    });
+                else
+                    row.Add(new Button(() => QaRunner.RemoveCase(saved))
+                    {
+                        text = $"Bỏ khỏi case {saved}",
+                        tooltip = $"Mục này đã thuộc case riêng {saved}. Bỏ case → mục lại có nút “Lưu thành case”.",
+                    });
                 foreach (var b in row.Children()) b.AddToClassList("accept-btn");
                 _detail.Add(row);
+                if (saved != null)
+                    _detail.Add(Muted($"Đã lưu thành case {saved}" + (GameData.IsLocalOnlyCase(r.GameId, saved) ? " (trên máy, chưa gửi lên kho chung)." : " (kho chung).")));
                 return;
             }
 

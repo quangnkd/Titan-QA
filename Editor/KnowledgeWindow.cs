@@ -172,6 +172,19 @@ namespace Titan.TrackingQA
             return null;
         }
 
+        /// <summary>Huỷ các chỉnh sửa trên máy chưa gửi (hỏi xác nhận). Case bị xoá thì gỡ khỏi lỗi Record đã lưu.</summary>
+        static bool Discard(IReadOnlyList<KnowledgeShare.Item> items)
+        {
+            if (items.Count == 0) return false;
+            var names = string.Join("\n", items.Take(8).Select(i => "• " + i.Title)) + (items.Count > 8 ? $"\n… và {items.Count - 8} mục khác" : "");
+            var exNote = items.Any(i => i.Kind == "exceptions") ? "\n\nNgoại lệ: xoá mọi ngoại lệ lưu trên máy chưa gửi — các mục đó hiện lại trong CheckAll." : "";
+            if (!EditorUtility.DisplayDialog("Xoá chỉnh sửa chưa gửi", $"Xoá {items.Count} chỉnh sửa trên máy?\n\n{names}{exNote}\n\nKho chung không đổi.", "Xoá", "Huỷ"))
+                return false;
+            foreach (var i in items) KnowledgeShare.Discard(i.Rel);
+            QaRunner.ForgetCase(null);
+            return true;
+        }
+
         static List<Sent> LoadSent()
         {
             try { return File.Exists(SentPath) ? JsonSerializer.Deserialize<List<Sent>>(File.ReadAllText(SentPath)) ?? new List<Sent>() : new List<Sent>(); }
@@ -219,6 +232,15 @@ namespace Titan.TrackingQA
                 pill.AddToClassList(by == null ? "warn" : stCls == "ok" ? "pass" : "info");
                 head.Add(pill);
                 head.Add(Para($"  <b>{it.Title}</b>  <i>Knowledge/{it.Rel}</i>"));
+                if (by == null)
+                {
+                    var item = it;
+                    head.Add(new Button(() => { if (Discard(new[] { item })) Render(); })
+                    {
+                        text = "Xoá",
+                        tooltip = "Huỷ chỉnh sửa này trên máy (chưa gửi nên kho chung không đổi)",
+                    });
+                }
                 box.Add(head);
                 if (by != null)
                 {
@@ -259,6 +281,11 @@ namespace Titan.TrackingQA
             var check = new Button(() => CheckStatus(true)) { text = _checking ? "Đang kiểm…" : "Kiểm tra trạng thái", tooltip = "Xem trên GitHub: đã tạo PR chưa, đã merge chưa" };
             check.SetEnabled(!_checking && url != null && sentAll.Count > 0);
             btns.Add(check);
+            if (unsent > 1)
+            {
+                var unsentItems = items.Where(i => !fp.TryGetValue(i.Rel, out var h) || SentFor(i.Rel, h, sentAll) == null).ToList();
+                btns.Add(new Button(() => { if (Discard(unsentItems)) Render(); }) { text = $"Xoá hết {unsent} chưa gửi", tooltip = "Huỷ mọi chỉnh sửa trên máy chưa gửi" });
+            }
             _body.Add(btns);
             if (_checkError != null) _body.Add(Muted("Không kiểm được trạng thái: " + _checkError));
             _body.Add(Muted("Tạo nhánh mới trong repo package, ghi các chỉnh sửa trên, push và tạo Pull Request cho người duyệt merge. " +

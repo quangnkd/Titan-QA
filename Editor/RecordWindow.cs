@@ -593,6 +593,11 @@ namespace Titan.TrackingQA
                 btns.Add(new Button(() => { _formIssue = it.Id; _form = "accept"; ShowIssueDetail(it); }) { text = "Đúng thiết kế…", tooltip = "Lưu làm ngoại lệ của game này (kèm lý do)" });
                 if (it.SavedCaseId == null)
                     btns.Add(new Button(() => { _formIssue = it.Id; _form = "case"; ShowIssueDetail(it); }) { text = "Lưu thành case G-xxx…", tooltip = "Lưu thành case riêng của game — các lần Check all / Record sau gắn mã case này; sau có thể nâng thành case chung TC" });
+                else
+                {
+                    var saved = it.SavedCaseId;
+                    btns.Add(new Button(() => { if (QaRunner.RemoveCase(saved)) Rebuild(); }) { text = $"Bỏ khỏi case {saved}", tooltip = "Bỏ case riêng game đã lưu từ lỗi này — lỗi lại có nút “Lưu thành case”." });
+                }
                 if (QaRunner.Report?.Findings.Any(f => f.RecordIssueId == it.Id) == true)
                     btns.Add(new Button(() => TrackingQAWindow.RevealRecord(it.Id)) { text = "Xem trong CheckAll" });
                 _detail.Add(btns);
