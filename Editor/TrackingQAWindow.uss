@@ -110,6 +110,10 @@ Button.primary:disabled { background-color: var(--unity-colors-button-background
 .na { padding: 8px; background-color: var(--unity-colors-helpbox-background); }
 .muted { opacity: 0.6; white-space: normal; margin: 2px 0; font-size: 11px; }
 .section { -unity-font-style: bold; margin: 10px 0 4px 0; opacity: 0.85; }
+.kb-fold { margin: 6px 0 2px 0; }
+.kb-fold > .unity-foldout__toggle { margin-left: 0; }
+.kb-fold > .unity-foldout__toggle .unity-label { -unity-font-style: bold; opacity: 0.9; }
+.kb-fold > .unity-foldout__content { margin-left: 16px; }
 .detail .code { white-space: pre; overflow: hidden; background-color: var(--unity-colors-helpbox-background); padding: 6px 8px; margin: 4px 0 6px 0; font-size: 11px; border-radius: 3px; }
 
 .trace { margin: 0 0 8px 0; padding: 4px 0 4px 8px; border-left-width: 2px; border-color: var(--unity-colors-default-border); }

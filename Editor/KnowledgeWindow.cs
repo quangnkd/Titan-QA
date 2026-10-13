@@ -44,6 +44,8 @@ namespace Titan.TrackingQA
         static string? _checkError;
 
         VisualElement _body = null!;
+        /// <summary>Nơi đang thêm nội dung: thân cửa sổ, hoặc mục thu gọn vừa mở bằng <see cref="Fold"/>.</summary>
+        VisualElement _cur = null!;
         Label _status = null!;
         bool _busy;
         string? _lastCleaned;
@@ -216,6 +218,7 @@ namespace Titan.TrackingQA
         {
             if (_body == null) return;
             _body.Clear();
+            _cur = _body;
             var game = QaRunner.GameId;
             // Package đã cập nhật (PR đã merge) → dọn bản trên máy đã có đủ trong kho chung
             try
@@ -228,12 +231,12 @@ namespace Titan.TrackingQA
                 }
             }
             catch (Exception e) { Debug.LogWarning("[Tracking QA] Không dọn được bản trên máy: " + e.Message); }
-            if (_lastCleaned != null) _body.Add(Para(_lastCleaned, "detail-text"));
+            if (_lastCleaned != null) _cur.Add(Para(_lastCleaned, "detail-text"));
 
             // --- Chờ gửi
             List<KnowledgeShare.Item> items;
             try { items = KnowledgeShare.Plan(game); }
-            catch (Exception e) { items = new List<KnowledgeShare.Item>(); _body.Add(Para("Không đọc được chỉnh sửa trên máy: " + e.Message, "detail-text")); }
+            catch (Exception e) { items = new List<KnowledgeShare.Item>(); _cur.Add(Para("Không đọc được chỉnh sửa trên máy: " + e.Message, "detail-text")); }
             Dictionary<string, string> fp;
             try { fp = KnowledgeShare.Fingerprint(game); } catch { fp = new Dictionary<string, string>(); }
             var sentAll = PruneSent(LoadSent(), fp);
@@ -241,10 +244,11 @@ namespace Titan.TrackingQA
             var url = RepoUrl();
             if (items.Count == 0)
             {
-                _body.Add(Section("Chỉnh sửa trên máy"));
-                _body.Add(Muted("Không có gì chờ gửi. Ngoại lệ, case G-xxx, chỉnh doc lưu trên máy sẽ hiện ở đây để gửi cho cả team."));
+                var none = Muted("Chỉnh sửa trên máy: không có gì chờ gửi.");
+                none.tooltip = "Ngoại lệ, case G-xxx, chỉnh doc lưu trên máy sẽ hiện ở đây để gửi cho cả team.";
+                _body.Add(none);
             }
-            else _body.Add(Section($"Chỉnh sửa trên máy ({items.Count}) — {unsent} chưa gửi, {items.Count - unsent} đã gửi"));
+            else Fold(null, $"Chỉnh sửa trên máy ({items.Count}) — {unsent} chưa gửi, {items.Count - unsent} đã gửi", true);
             foreach (var it in items)
             {
                 var box = new VisualElement();
@@ -280,7 +284,7 @@ namespace Titan.TrackingQA
                 }
                 foreach (var l in it.Lines.Take(30)) box.Add(Para("• " + l));
                 if (it.Lines.Count > 30) box.Add(Muted($"… và {it.Lines.Count - 30} mục khác"));
-                _body.Add(box);
+                _cur.Add(box);
             }
 
             if (items.Count > 0) SendBox(url, unsent, items, fp, sentAll);
@@ -288,7 +292,7 @@ namespace Titan.TrackingQA
             // --- Đã gửi: chỉ lần gửi còn cần theo dõi (xong việc thì tự bỏ khỏi danh sách)
             if (sentAll.Count > 0)
             {
-                _body.Add(Section($"Đã gửi, đang chờ ({sentAll.Count})"));
+                Fold("sent", $"Đã gửi, đang chờ ({sentAll.Count})", true);
                 foreach (var s in sentAll.OrderByDescending(x => x.At).Take(10))
                 {
                     var row = Row("ev");
@@ -300,12 +304,12 @@ namespace Titan.TrackingQA
                     row.Add(sl);
                     if (link != null) row.Add(Link(linkText ?? "Mở", link));
                     row.tooltip = s.Branch;
-                    _body.Add(row);
+                    _cur.Add(row);
                 }
                 var check = new Button(() => CheckStatus(true)) { text = _checking ? "Đang kiểm…" : "Kiểm tra trạng thái", tooltip = "Xem trên GitHub: đã tạo PR chưa, đã merge chưa" };
                 check.SetEnabled(!_checking && url != null);
-                _body.Add(check);
-                if (_checkError != null) _body.Add(Muted("Không kiểm được trạng thái: " + _checkError));
+                _cur.Add(check);
+                if (_checkError != null) _cur.Add(Muted("Không kiểm được trạng thái: " + _checkError));
             }
 
             Rest(game);
@@ -322,8 +326,8 @@ namespace Titan.TrackingQA
             urlField.style.flexGrow = 1;
             urlField.RegisterValueChangedCallback(e => EditorPrefs.SetString(PrefUrl, e.newValue.Trim()));
             urlRow.Add(urlField);
-            _body.Add(urlRow);
-            _body.Add(Muted(url != null ? "Gửi tới: " + KnowledgePublisher.Mask(url) : "Không biết kho chung ở đâu (package không cài từ git) — nhập URL git của repo package."));
+            _cur.Add(urlRow);
+            _cur.Add(Muted(url != null ? "Gửi tới: " + KnowledgePublisher.Mask(url) : "Không biết kho chung ở đâu (package không cài từ git) — nhập URL git của repo package."));
 
             var btns = Row("accept-btns");
             var send = new Button(() => Publish(url!))
@@ -339,8 +343,8 @@ namespace Titan.TrackingQA
                 var unsentItems = items.Where(i => !fp.TryGetValue(i.Rel, out var h) || SentFor(i.Rel, h, sentAll) == null).ToList();
                 btns.Add(new Button(() => { if (Discard(unsentItems)) Render(); }) { text = $"Xoá hết {unsent} chưa gửi", tooltip = "Huỷ mọi chỉnh sửa trên máy chưa gửi" });
             }
-            _body.Add(btns);
-            _body.Add(Muted("Tạo nhánh mới trong repo package, ghi các chỉnh sửa trên, push và tạo Pull Request cho người duyệt merge. " +
+            _cur.Add(btns);
+            _cur.Add(Muted("Tạo nhánh mới trong repo package, ghi các chỉnh sửa trên, push và tạo Pull Request cho người duyệt merge. " +
                             "Dùng quyền git trên máy này. Chưa merge thì bản trên máy vẫn giữ và vẫn có hiệu lực trên máy này."));
         }
 
@@ -352,7 +356,7 @@ namespace Titan.TrackingQA
             try { ex = game != null ? GameData.Exceptions(game) : new Dictionary<string, (GameData.AcceptedEntry, bool)>(); } catch { ex = new Dictionary<string, (GameData.AcceptedEntry, bool)>(); }
             if (ex.Count > 0)
             {
-                _body.Add(Section($"Ngoại lệ của game ({ex.Count})"));
+                Fold("ex", $"Ngoại lệ của game ({ex.Count})", false);
                 foreach (var (key, (e, pending)) in ex.OrderBy(x => x.Value.E.Subject, StringComparer.Ordinal))
                 {
                     var row = Row("ev");
@@ -372,7 +376,7 @@ namespace Titan.TrackingQA
                         QaRunner.UnacceptKey(k);
                         Render();
                     }) { text = "Bỏ", tooltip = "Bỏ ngoại lệ này — mục hiện lại trong CheckAll" });
-                    _body.Add(row);
+                    _cur.Add(row);
                 }
             }
 
@@ -382,14 +386,14 @@ namespace Titan.TrackingQA
                 var games = Knowledge.KnownGames();
                 if (game != null && !games.Contains(game)) games.Add(game);
                 var stats = Learning.Collect(games);
-                if (stats.Count > 0) _body.Add(Section("Học từ chỗ Check all sai"));
+                if (stats.Count > 0) Fold("learn", $"Học từ chỗ Check all sai ({stats.Count} luật)", false);
                 foreach (var s in stats)
-                    _body.Add(Para($"<b>{s.Rule}</b> — báo nhầm {s.FalsePositives}" +
+                    _cur.Add(Para($"<b>{s.Rule}</b> — báo nhầm {s.FalsePositives}" +
                                    (s.Causes.Count > 0 ? " (" + string.Join(", ", s.Causes.Select(c => $"{GameData.CauseLabel(c.Key)} ×{c.Value}")) + ")" : "") +
                                    (s.FpGames.Count > 0 ? $" ở {string.Join(", ", s.FpGames)}" : "") + $" · đúng thiết kế {s.ByDesign}"));
-                foreach (var sug in Learning.Suggestions(stats)) { var p = Para("→ " + sug, "sc-check"); p.AddToClassList("warn"); _body.Add(p); }
+                foreach (var sug in Learning.Suggestions(stats)) { var p = Para("→ " + sug, "sc-check"); p.AddToClassList("warn"); _cur.Add(p); }
             }
-            catch (Exception e) { _body.Add(Muted("Không tổng hợp được: " + e.Message)); }
+            catch (Exception e) { _cur.Add(Muted("Không tổng hợp được: " + e.Message)); }
 
             var fb = RecordFeedback.Load(RecordController.FeedbackPath);
             // --- Đề xuất nâng case riêng game thành case chung
@@ -398,7 +402,7 @@ namespace Titan.TrackingQA
                 var games = Knowledge.KnownGames();
                 if (game != null && !games.Contains(game)) games.Add(game);
                 var promos = Learning.CasePromotions(games);
-                if (promos.Count > 0) _body.Add(Section($"Đề xuất nâng thành case chung ({promos.Count})"));
+                if (promos.Count > 0) Fold("promo", $"Đề xuất nâng thành case chung ({promos.Count})", false);
                 foreach (var p in promos)
                 {
                     var box = new VisualElement();
@@ -416,19 +420,20 @@ namespace Titan.TrackingQA
                     {
                         text = "Copy yêu cầu", tooltip = req,
                     });
-                    _body.Add(box);
+                    _cur.Add(box);
                 }
             }
-            catch (Exception e) { _body.Add(Muted("Không tổng hợp được đề xuất: " + e.Message)); }
+            catch (Exception e) { _cur.Add(Muted("Không tổng hợp được đề xuất: " + e.Message)); }
 
             var diffs = fb.Scenarios.Values.Where(x => x.Diffs > 0).OrderByDescending(x => x.Diffs).ToList();
             if (diffs.Count > 0)
             {
-                _body.Add(Para($"<b>Record lệch log giả lập</b> ({diffs.Count} thao tác) — chỗ Check all lần luồng khác thực tế:"));
+                Fold("diff", $"Record lệch log giả lập ({diffs.Count} thao tác)", false);
+                _cur.Add(Muted("Chỗ Check all lần luồng khác thực tế:"));
                 foreach (var d in diffs.Take(10))
                 {
-                    _body.Add(Para($"• {d.Trigger}: lệch {d.Diffs}/{d.Plays} lần"));
-                    foreach (var n in d.LastDiff.Take(3)) _body.Add(Muted("    " + n));
+                    _cur.Add(Para($"• {d.Trigger}: lệch {d.Diffs}/{d.Plays} lần"));
+                    foreach (var n in d.LastDiff.Take(3)) _cur.Add(Muted("    " + n));
                 }
             }
             _status.text = _busy ? "Đang gửi lên kho chung…" : "";
@@ -528,11 +533,15 @@ namespace Titan.TrackingQA
             return l;
         }
 
-        static Label Section(string text)
+        /// <summary>Mở 1 mục thu gọn được (bấm tiêu đề để thu lên / xổ xuống); nội dung thêm sau đó vào mục này. key != null → nhớ trạng thái trên máy.</summary>
+        void Fold(string? key, string title, bool open)
         {
-            var l = new Label(text);
-            l.AddToClassList("section");
-            return l;
+            var pref = "Titan.TrackingQA.Kb.Fold." + key;
+            var f = new Foldout { text = title, value = key == null ? open : EditorPrefs.GetBool(pref, open) };
+            f.AddToClassList("kb-fold");
+            if (key != null) f.RegisterValueChangedCallback(e => { if (e.target == f) EditorPrefs.SetBool(pref, e.newValue); });
+            _body.Add(f);
+            _cur = f;
         }
     }
 }
