@@ -117,13 +117,6 @@ namespace Titan.TrackingQA
             _claude = new Toggle("Claude") { value = QaRunner.UseClaude };
             _claude.RegisterValueChangedCallback(e =>
             {
-                if (e.newValue && !EditorUtility.DisplayDialog("Claude review",
-                        "Khi bật, Check all gửi kết quả phân tích và đoạn code liên quan của project cho Claude (qua Claude Code đang đăng nhập trên máy này — gói Claude của bạn) để xác nhận / bác bỏ mục nghi ngờ và tìm thêm lỗi. Code được gửi tới Anthropic.\n\nBật Claude review?",
-                        "Bật", "Huỷ"))
-                {
-                    _claude.SetValueWithoutNotify(false);
-                    return;
-                }
                 QaRunner.UseClaude = e.newValue;
                 Refresh();
             });
@@ -272,7 +265,8 @@ namespace Titan.TrackingQA
             _claude.tooltip = cs == null ? "Đang kiểm Claude Code trên máy…"
                 : !cs.Found ? "Chưa cài Claude Code (claude.exe) — cài Claude Code rồi đăng nhập để dùng Claude review"
                 : !cs.LoggedIn ? "Claude Code chưa đăng nhập — mở terminal, chạy claude để đăng nhập"
-                : $"Check all có Claude review (Claude Code {cs.Version}) — chậm hơn vài phút; xác nhận / bác bỏ mục nghi ngờ, tìm thêm lỗi";
+                : $"Check all có Claude review (Claude Code {cs.Version}) — chậm hơn vài phút; xác nhận / bác bỏ mục nghi ngờ, tìm thêm lỗi. " +
+                  "Kết quả phân tích và đoạn code liên quan được gửi cho Claude (gói Claude đang đăng nhập trên máy, tới Anthropic).";
             _claude.label = QaRunner.UseClaude && !QaRunner.ClaudeReady && cs != null ? "Claude (chưa sẵn sàng)" : "Claude";
             var (unsent, waiting) = KnowledgeWindow.Counts();
             _kbBtn.text = unsent > 0 ? $"Kho chung · {unsent} chưa gửi" : waiting > 0 ? $"Kho chung · {waiting} đã gửi" : "Kho chung";
