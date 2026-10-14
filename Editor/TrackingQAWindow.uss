@@ -16,6 +16,8 @@
 .tqa > * { flex-shrink: 0; }
 .tqa > .split { flex-shrink: 1; flex-grow: 1; min-height: 160px; }
 .tqa > .empty { flex-shrink: 1; }
+/* Cửa sổ Kho chung / sửa case: vùng nội dung co lại theo cửa sổ để cuộn được (không thì dài hết nội dung, không cuộn) */
+.tqa > .detail-scroll { flex-shrink: 1; min-height: 0; }
 
 /* Hàng trên */
 .top { margin-bottom: 4px; }

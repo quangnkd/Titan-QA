@@ -235,6 +235,8 @@ namespace Titan.TrackingQA
                         Version++;
                         Save();
                         Status = Summary(r) + $" · {(DateTime.Now - started).TotalSeconds:F0}s";
+                        // Đang bật Claude: có case Kiểm tay chưa có luật → hỏi có mở Claude Code viết luật không
+                        if (what == "Check all" && UseClaude) EditorApplication.delayCall += RuleRequest.OfferAfterCheck;
                     });
                 }
                 catch (OperationCanceledException) { Post(() => Status = "Đã huỷ."); }
