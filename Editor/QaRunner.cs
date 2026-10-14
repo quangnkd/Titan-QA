@@ -119,6 +119,26 @@ namespace Titan.TrackingQA
             var dir = info != null ? Path.Combine(info.resolvedPath, "Knowledge") : null;
             if (dir != null && Directory.Exists(Path.Combine(dir, "common"))) Knowledge.SharedDir = dir;
             Knowledge.LocalDir = Path.Combine(ProjectRoot, "UserSettings", "TrackingQA", "knowledge-local");
+            CaseStore.SheetPath = CaseSheetPath;
+        }
+
+        const string PrefCaseSheet = "Titan.TrackingQA.CaseSheet";
+
+        /// <summary>File Excel case dùng chung (vd trên Drive) — lưu theo máy, dùng cho mọi game; trống = chưa dùng file case.</summary>
+        public static string? CaseSheetPath
+        {
+            get { var p = EditorPrefs.GetString(PrefCaseSheet, ""); return p.Length > 0 ? p : null; }
+            set { EditorPrefs.SetString(PrefCaseSheet, value ?? ""); CaseStore.SheetPath = value; ReapplyKnowledge(); }
+        }
+
+        /// <summary>Tạo file case dùng chung từ mọi case đang dùng (kể cả case lưu trên máy) rồi dùng file đó.</summary>
+        public static bool CreateCaseSheet(string path)
+        {
+            var game = GameId;
+            try { using (Knowledge.ForGame(game)) CaseStore.CreateSheet(path, game); }
+            catch (Exception e) { EditorUtility.DisplayDialog("File case", "Không tạo được file case:\n" + e.Message, "OK"); return false; }
+            CaseSheetPath = path;
+            return true;
         }
 
         public static string? GameId => UnityProject.ReadGameId(ProjectRoot);
@@ -167,7 +187,14 @@ namespace Titan.TrackingQA
                 UnityInstallPath = Path.GetDirectoryName(EditorApplication.applicationContentsPath),
             };
             var ai = useAi ? Ai() : null;
-            Run("Check all", ct => CheckRunner.RunSessionAsync(req, ai, Log, ct), s => { Session = s; return s.Report; });
+            var game = GameId;
+            Run("Check all", ct =>
+            {
+                // File case dùng chung: cấp mã cho dòng mới, thêm case mới của package vào file
+                try { using (Knowledge.ForGame(game)) { var n = CaseStore.SyncSheet(game); if (n > 0) Log($"File case: cập nhật {n} dòng (cấp mã / thêm case mới)."); } }
+                catch (Exception e) { Log("File case: chưa đồng bộ được (" + e.Message + ") — vẫn đọc file để check."); }
+                return CheckRunner.RunSessionAsync(req, ai, Log, ct);
+            }, s => { Session = s; return s.Report; });
         }
 
         /// <summary>Có thể gửi báo cáo đang xem cho Claude review (còn phiên phân tích trong bộ nhớ, chưa nạp lại script).</summary>
@@ -235,8 +262,6 @@ namespace Titan.TrackingQA
                         Version++;
                         Save();
                         Status = Summary(r) + $" · {(DateTime.Now - started).TotalSeconds:F0}s";
-                        // Đang bật Claude: có case Kiểm tay chưa có luật → hỏi có mở Claude Code viết luật không
-                        if (what == "Check all" && UseClaude) EditorApplication.delayCall += RuleRequest.OfferAfterCheck;
                     });
                 }
                 catch (OperationCanceledException) { Post(() => Status = "Đã huỷ."); }
@@ -388,11 +413,13 @@ namespace Titan.TrackingQA
             var local = CaseStore.IsLocalOnly(game, id);
             var common = CaseStore.IsCommon(id);
             if (!EditorUtility.DisplayDialog("Bỏ case " + id,
-                    local ? $"Xoá case {id} (mới lưu trên máy, chưa gửi lên kho chung)?"
+                    CaseStore.UsesSheet ? $"Bỏ case {id}? Dòng của case trong file case dùng chung sẽ bị gạch ngang — cả team thấy ngay (bỏ gạch ngang trong Excel để dùng lại)."
+                    : local ? $"Xoá case {id} (mới lưu trên máy, chưa gửi lên kho chung)?"
                           : $"Bỏ case {id} {(common ? "(case chung mọi game)" : "cho game này")}?\nCase đang ở kho chung: việc bỏ thành chỉnh sửa chờ gửi (nút Kho chung) — " +
                             (common ? "người duyệt merge thì mọi game cùng bỏ." : "để cả team cùng bỏ."),
                     "Bỏ case", "Huỷ")) return false;
-            using (Knowledge.ForGame(game)) CaseStore.Remove(game, id);
+            try { using (Knowledge.ForGame(game)) CaseStore.Remove(game, id); }
+            catch (Exception e) { EditorUtility.DisplayDialog("Bỏ case", "Không bỏ được case:\n" + e.Message, "OK"); return false; }
             ForgetCase(id);
             return true;
         }

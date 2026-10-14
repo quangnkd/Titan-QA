@@ -809,6 +809,9 @@ namespace Titan.TrackingQA
                 _detail.Add(steps);
             }
             if (!string.IsNullOrEmpty(c.Example)) _detail.Add(Para("<b>Ví dụ:</b> " + c.Example));
+            if (c.AiVerdict != null)
+                _detail.Add(Para($"<b>Claude kiểm (đọc code, cần xác nhận):</b> {(c.AiVerdict switch { "pass" => "Đạt", "fail" => "Vi phạm", _ => "Chưa chắc — kiểm khi chơi" })}" +
+                                 (string.IsNullOrEmpty(c.AiReason) ? "" : " — " + c.AiReason)));
             if (!string.IsNullOrEmpty(c.Source)) _detail.Add(Muted("Nguồn: " + c.Source));
             _detailScroll.scrollOffset = Vector2.zero;
         }

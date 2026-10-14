@@ -6,7 +6,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using TrackingChecker.Core;
-using TrackingChecker.Core.Ai;
 using TrackingChecker.Core.Live;
 using TrackingChecker.Core.Rules;
 using UnityEditor;
@@ -445,41 +444,49 @@ namespace Titan.TrackingQA
             _status.style.display = _busy ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
-        /// <summary>Nhờ Claude viết luật cho case Kiểm tay (mở Claude Code trong repo lõi) + chọn repo lõi nếu chưa tìm thấy.</summary>
-        void RuleRow(string? game)
+        /// <summary>File Excel case dùng chung: đang dùng file nào (mở / đổi / thôi dùng), hoặc tạo file từ các case hiện có.</summary>
+        void SheetRow(int count)
         {
-            int manual;
-            try { manual = RuleRequest.Manual(game).Count; } catch { manual = 0; }
-            if (manual == 0) return;
-            var repo = RuleRequest.CoreRepo;
+            var path = QaRunner.CaseSheetPath;
             var row = Row("ev");
             row.style.flexWrap = Wrap.Wrap;
-            var btn = new Button(RuleRequest.StartManual)
+            if (path != null && File.Exists(path))
             {
-                text = $"Nhờ Claude viết luật ({manual} case kiểm tay)…",
-                tooltip = "Mở Claude Code trong repo lõi TrackingChecker, giao sẵn yêu cầu viết luật + test + chạy bộ game chuẩn. Bạn duyệt từng bước; push / PR khi bạn đồng ý.",
-            };
-            btn.SetEnabled(repo != null);
-            row.Add(btn);
+                row.Add(new Label("File case: "));
+                var name = new Label(path) { tooltip = "Thêm / sửa / bỏ case ở đây hoặc ngay trong Excel — cả team dùng chung file này. Dòng mới để trống cột Mã; gạch ngang dòng = bỏ case." };
+                name.style.flexShrink = 1;
+                row.Add(name);
+                row.Add(new Button(() => EditorUtility.OpenWithDefaultApp(path)) { text = "Mở file" });
+                row.Add(new Button(() => PickSheet(path)) { text = "Đổi…" });
+                row.Add(new Button(() =>
+                {
+                    if (!EditorUtility.DisplayDialog("File case", "Thôi dùng file case trên máy này? Case quay về kho chung (package + chỉnh sửa trên máy).", "Thôi dùng", "Huỷ")) return;
+                    QaRunner.CaseSheetPath = null;
+                    Render();
+                }) { text = "Thôi dùng" });
+                _cur.Add(row);
+                _cur.Add(Muted("Sửa trong Excel xong, bấm Check all để đọc lại. Dòng mới để trống cột Mã — Check all tự cấp mã."));
+                return;
+            }
+            if (path != null) _cur.Add(Muted($"Không thấy file case: {path} (Drive chưa đồng bộ?) — đang dùng kho chung."));
+            row.Add(new Label("Chưa dùng file case chung: "));
+            row.Add(new Button(() =>
+            {
+                var p = EditorUtility.SaveFilePanel("Tạo file case dùng chung (vd trong thư mục Drive của team)", "", "Tracking QA - Case.xlsx", "xlsx");
+                if (string.IsNullOrEmpty(p)) return;
+                if (File.Exists(p) && !EditorUtility.DisplayDialog("File case", "File đã có — ghi đè bằng các case hiện có?", "Ghi đè", "Huỷ")) return;
+                if (QaRunner.CreateCaseSheet(p)) Render();
+            }) { text = $"Tạo file ({count} case)…", tooltip = "Tạo file Excel gồm mọi case đang dùng (kể cả case lưu trên máy) — đặt trong thư mục Drive để cả team dùng chung" });
+            row.Add(new Button(() => PickSheet(null)) { text = "Chọn file có sẵn…" });
             _cur.Add(row);
-            if (repo != null) { _cur.Add(Muted("Repo lõi: " + repo)); return; }
-            var pick = Row("ev");
-            pick.style.flexWrap = Wrap.Wrap;
-            pick.Add(new Label("Repo lõi TrackingChecker: "));
-            var field = new TextField { value = RuleRequest.ConfiguredRepo, tooltip = "Thư mục repo TrackingChecker (có src/TrackingChecker.Core) trên máy này" };
-            field.style.minWidth = 260;
-            field.style.flexGrow = 1;
-            field.RegisterCallback<FocusOutEvent>(_ => { RuleRequest.ConfiguredRepo = field.value; Render(); });
-            pick.Add(field);
-            pick.Add(new Button(() =>
-            {
-                var d = EditorUtility.OpenFolderPanel("Chọn repo TrackingChecker", RuleRequest.ConfiguredRepo, "");
-                if (string.IsNullOrEmpty(d)) return;
-                RuleRequest.ConfiguredRepo = d;
-                Render();
-            }) { text = "Chọn…" });
-            _cur.Add(pick);
-            _cur.Add(Muted("Chỉ máy có mã nguồn lõi (thường là máy người duyệt) mới viết luật được."));
+        }
+
+        void PickSheet(string? current)
+        {
+            var p = EditorUtility.OpenFilePanel("Chọn file case dùng chung", current != null ? Path.GetDirectoryName(current) : "", "xlsx");
+            if (string.IsNullOrEmpty(p)) return;
+            QaRunner.CaseSheetPath = p;
+            Render();
         }
 
         /// <summary>Kho case: mọi case đang dùng (TC chung + G riêng game) — tìm, thêm, sửa, bỏ.</summary>
@@ -500,7 +507,7 @@ namespace Titan.TrackingQA
             search.style.flexGrow = 1;
             top.Add(search);
             _cur.Add(top);
-            RuleRow(game);
+            SheetRow(cases.Count);
             var list = new VisualElement();
             _cur.Add(list);
 
@@ -518,9 +525,8 @@ namespace Titan.TrackingQA
                     id.style.minWidth = 52;
                     row.Add(id);
                     var local = c.Layer.StartsWith("máy", StringComparison.Ordinal);
-                    var asked = RuleWriter.IsManual(c) ? RuleRequest.RequestedAt(c.Id) : null;
                     var text = Para(c.Title + (CaseStore.IsCommon(c.Id) ? "" : "  <i>riêng game</i>") +
-                                    (RuleWriter.IsManual(c) ? "  <i>kiểm tay" + (asked is { } at ? $" · đã nhờ Claude viết luật {at:dd/MM}" : "") + "</i>" : "") +
+                                    (CaseStore.IsManual(c) ? "  <i>kiểm tay</i>" : "") +
                                     (local ? (game != null && CaseStore.IsLocalOnly(game, c.Id) ? "  <i>mới, chưa gửi</i>" : "  <i>đã sửa trên máy</i>") : ""));
                     text.style.flexGrow = 1;
                     text.style.flexShrink = 1;

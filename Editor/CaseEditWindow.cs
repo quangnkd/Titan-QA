@@ -105,7 +105,7 @@ namespace Titan.TrackingQA
             if (!docOnly) body.Add(Muted("Điều kiện áp dụng của case này phức tạp hơn — giữ nguyên."));
 
             // --- Cách kiểm
-            var keepLabel = old != null && !IsSimple(old) ? $"Giữ cách kiểm hiện tại ({old.Kind}{(old.FromRules.Count > 0 ? " · " + string.Join(", ", old.FromRules) : "")})" : null;
+            var keepLabel = old != null && old.Kind != "manual" && !CaseStore.IsSimpleRule(old) ? $"Giữ cách kiểm hiện tại ({old.Kind}{(old.FromRules.Count > 0 ? " · " + string.Join(", ", old.FromRules) : "")})" : null;
             var modes = new List<string>();
             if (keepLabel != null) modes.Add(keepLabel);
             modes.Add(Manual);
@@ -208,16 +208,15 @@ namespace Titan.TrackingQA
                 btns.Add(new Button(() => { if (QaRunner.RemoveCase(old.Id)) Close(); }) { text = "Bỏ case…", tooltip = "Chưa gửi → xoá hẳn; đã ở kho chung → chỉnh sửa chờ gửi (giữ mã)" });
             body.Add(btns);
             body.Add(error);
-            body.Add(Muted("Lưu trên máy này, có hiệu lực ngay. " + (Common()
-                ? "Case chung: gửi qua cửa sổ Kho chung → người duyệt merge thì áp cho mọi game."
-                : "Case riêng game: gửi qua cửa sổ Kho chung để cả team có.")));
-            body.Add(Muted("Muốn cách kiểm mới mà chưa có luật: lưu dạng Kiểm tay trước, rồi nhờ Claude viết luật tự động."));
+            body.Add(Muted(CaseStore.UsesSheet
+                ? "Lưu vào file case dùng chung — cả team thấy ngay."
+                : "Lưu trên máy này, có hiệu lực ngay. " + (Common()
+                    ? "Case chung: gửi qua cửa sổ Kho chung → người duyệt merge thì áp cho mọi game."
+                    : "Case riêng game: gửi qua cửa sổ Kho chung để cả team có.")));
+            body.Add(Muted("Kiểm tay: khi Check all có tick Claude, Claude đọc code để kiểm case này (Đạt / Vi phạm / chưa chắc)."));
             title.schedule.Execute(() => title.Focus());
         }
 
-        static bool IsSimple(TrackingCase c) =>
-            c.Kind == "manual" || (c.Kind == "rule" && c.FromRules.Count == 1 && c.Match.Count <= 1 &&
-                                   c.Match.All(m => m.TitlePattern == null && m.TextPattern == null && (m.Rule == null || m.Rule == c.FromRules[0])));
 
         /// <summary>Luật chọn được: luật các case đang dùng + luật có trong kết quả Check all đang xem.</summary>
         static List<(string Rule, string Example)> KnownRules(string? game)
