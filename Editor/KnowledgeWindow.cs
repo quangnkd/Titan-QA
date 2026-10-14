@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using TrackingChecker.Core;
 using TrackingChecker.Core.Live;
+using TrackingChecker.Core.Rules;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -49,6 +50,7 @@ namespace Titan.TrackingQA
         Label _status = null!;
         bool _busy;
         string? _lastCleaned;
+        string _caseQuery = "";
 
         public static void Open() => GetWindow<KnowledgeWindow>("Tracking QA · Kho chung").minSize = new Vector2(560, 360);
 
@@ -351,6 +353,8 @@ namespace Titan.TrackingQA
         /// <summary>Phần dưới: ngoại lệ, học từ chỗ Check all sai, đề xuất nâng case chung, lệch giả lập (ẩn phần trống).</summary>
         void Rest(string? game)
         {
+            CaseList(game);
+
             // --- Ngoại lệ đang có hiệu lực (CheckAll không hiện mục đã chấp nhận → bỏ ở đây nếu lỡ đánh nhầm)
             Dictionary<string, (GameData.AcceptedEntry E, bool Pending)> ex;
             try { ex = game != null ? GameData.Exceptions(game) : new Dictionary<string, (GameData.AcceptedEntry, bool)>(); } catch { ex = new Dictionary<string, (GameData.AcceptedEntry, bool)>(); }
@@ -438,6 +442,59 @@ namespace Titan.TrackingQA
             }
             _status.text = _busy ? "Đang gửi lên kho chung…" : "";
             _status.style.display = _busy ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>Kho case: mọi case đang dùng (TC chung + G riêng game) — tìm, thêm, sửa, bỏ.</summary>
+        void CaseList(string? game)
+        {
+            List<TrackingCase> cases;
+            try { using (Knowledge.ForGame(game)) cases = CaseStore.Active(game); }
+            catch (Exception e) { _cur.Add(Muted("Không đọc được kho case: " + e.Message)); return; }
+            var nCommon = cases.Count(c => CaseStore.IsCommon(c.Id));
+            Fold("cases", $"Kho case ({nCommon} chung · {cases.Count - nCommon} riêng game)", false);
+            var top = Row("ev");
+            top.style.flexWrap = Wrap.Wrap;
+            var add = new Button(CaseEditWindow.Add) { text = "+ Thêm case", tooltip = "Thêm case chung (TC, mọi game) hoặc riêng game này (G)" };
+            add.AddToClassList("primary");
+            top.Add(add);
+            var search = new TextField { value = _caseQuery, tooltip = "Tìm theo mã, nội dung, nhóm" };
+            search.style.minWidth = 220;
+            search.style.flexGrow = 1;
+            top.Add(search);
+            _cur.Add(top);
+            var list = new VisualElement();
+            _cur.Add(list);
+
+            void Fill()
+            {
+                list.Clear();
+                var q = _caseQuery.Trim();
+                foreach (var c in cases.Where(c => q.Length == 0 || c.Id.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
+                                                   || c.Title.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0
+                                                   || c.Group.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0))
+                {
+                    var row = Row("ev");
+                    row.style.alignItems = Align.FlexStart;
+                    var id = new Label($"<b>{c.Id}</b>");
+                    id.style.minWidth = 52;
+                    row.Add(id);
+                    var local = c.Layer.StartsWith("máy", StringComparison.Ordinal);
+                    var text = Para(c.Title + (CaseStore.IsCommon(c.Id) ? "" : "  <i>riêng game</i>") +
+                                    (local ? (game != null && CaseStore.IsLocalOnly(game, c.Id) ? "  <i>mới, chưa gửi</i>" : "  <i>đã sửa trên máy</i>") : ""));
+                    text.style.flexGrow = 1;
+                    text.style.flexShrink = 1;
+                    text.tooltip = (c.Group.Length > 0 ? c.Group + " · " : "") + (c.Kind == "manual" ? "Kiểm tay" : "Cách kiểm: " + c.Kind) +
+                                   (c.FromRules.Count > 0 ? " · luật " + string.Join(", ", c.FromRules) : "");
+                    row.Add(text);
+                    var cid = c.Id;
+                    row.Add(new Button(() => CaseEditWindow.Edit(cid)) { text = "Sửa" });
+                    row.Add(new Button(() => { if (QaRunner.RemoveCase(cid)) Render(); }) { text = "Bỏ" });
+                    list.Add(row);
+                }
+                if (list.childCount == 0) list.Add(Muted("Không có case nào khớp."));
+            }
+            search.RegisterValueChangedCallback(e => { _caseQuery = e.newValue; Fill(); });
+            Fill();
         }
 
         void Publish(string url)

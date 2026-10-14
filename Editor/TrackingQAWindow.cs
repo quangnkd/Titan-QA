@@ -755,6 +755,12 @@ namespace Titan.TrackingQA
             if (c.Layer.Contains("game")) head.Add(Tag("riêng game này", "pkg", "Case lưu cho riêng game này (" + c.Layer + ")"));
             if (c.Basis != "doc") head.Add(Tag("có phần suy luận — chưa bật", "ai", "Phần doc / Master không ghi rõ: chưa kiểm cho tới khi được chốt"));
             _detail.Add(head);
+            var caseBtns = Row("accept-btns");
+            var cid = c.Id;
+            caseBtns.Add(new Button(() => CaseEditWindow.Edit(cid)) { text = "Sửa case…", tooltip = "Sửa nội dung / cách kiểm — lưu trên máy, gửi cho cả team qua Kho chung" });
+            caseBtns.Add(new Button(() => QaRunner.RemoveCase(cid)) { text = "Bỏ case…" });
+            caseBtns.Add(new Button(CaseEditWindow.Add) { text = "+ Thêm case" });
+            _detail.Add(caseBtns);
 
             var title = Selectable(new Label(c.Title));
             title.AddToClassList("d-title");

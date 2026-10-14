@@ -383,12 +383,14 @@ namespace Titan.TrackingQA
         {
             var game = Report?.GameId ?? GameId;
             if (game == null) return false;
-            var local = GameData.IsLocalOnlyCase(game, id);
+            var local = CaseStore.IsLocalOnly(game, id);
+            var common = CaseStore.IsCommon(id);
             if (!EditorUtility.DisplayDialog("Bỏ case " + id,
                     local ? $"Xoá case {id} (mới lưu trên máy, chưa gửi lên kho chung)?"
-                          : $"Bỏ case {id} cho game này?\nCase đang ở kho chung: việc bỏ thành chỉnh sửa chờ gửi (nút Kho chung) để cả team cùng bỏ.",
+                          : $"Bỏ case {id} {(common ? "(case chung mọi game)" : "cho game này")}?\nCase đang ở kho chung: việc bỏ thành chỉnh sửa chờ gửi (nút Kho chung) — " +
+                            (common ? "người duyệt merge thì mọi game cùng bỏ." : "để cả team cùng bỏ."),
                     "Bỏ case", "Huỷ")) return false;
-            using (Knowledge.ForGame(game)) GameData.RemoveCase(game, id);
+            using (Knowledge.ForGame(game)) CaseStore.Remove(game, id);
             ForgetCase(id);
             return true;
         }
