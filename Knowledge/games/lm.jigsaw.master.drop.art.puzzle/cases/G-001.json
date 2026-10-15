@@ -1,8 +1,8 @@
 {
   "id": "G-001",
   "group": "Riêng game",
-  "title": "move_complete: mỗi tranh chỉ tính các bước kéo mảnh của chính tranh đó — không tính khi mảnh của tranh bị mảnh tranh khác đẩy / đổi chỗ",
-  "why": "Đếm cả tranh bị đổi chỗ làm số bước của mọi tranh bị đội lên, tổng các bước lớn hơn số lần người chơi kéo thật",
+  "title": "move_complete = \"P1-m1,P2-m2,…\": Pn là bức tranh hoàn thành thứ n (theo thứ tự hoàn thành), m = TỔNG số bước kéo trong level tính đến lúc bức đó hoàn thành (cộng dồn); mỗi lần kéo thả = 1 bước, không tính trùng",
+  "why": "Data cần biết người chơi phải đi tổng bao nhiêu bước để xong bức đầu tiên, bức thứ 2…; đếm riêng từng bức hoặc đếm 1 lần kéo nhiều lần làm sai số liệu",
   "category": "Lỗi",
   "check": { "kind": "manual" },
   "staticCheck": "no",
@@ -10,12 +10,12 @@
   "fromRules": [],
   "match": [],
   "repro": [
-    "Vào level có từ 2 tranh trở lên",
-    "Kéo 1 mảnh của tranh 1 thả vào ô đang có mảnh của tranh 2 (2 mảnh đổi chỗ)",
-    "Hoàn thành cả 2 tranh, xem level_end.move_complete",
-    "Đúng: lần kéo đó chỉ cộng 1 cho P1; sai: P2 cũng bị cộng 1"
+    "Vào level có từ 2 bức tranh trở lên",
+    "Kéo 3 lần để hoàn thành 1 bức, rồi kéo thêm 4 lần để hoàn thành bức tiếp theo",
+    "Xem level_end.move_complete",
+    "Đúng: \"P1-3,P2-7\" (cộng dồn, theo thứ tự hoàn thành). Sai: \"P1-3,P2-4\" (đếm riêng từng bức), số theo thứ tự bức trong level thay vì thứ tự hoàn thành, hoặc 1 lần kéo đổi chỗ 2 bức bị tính 2 bước"
   ],
-  "example": "move_complete = \"P1-3,P2-4\": tranh 1 kéo 3 bước, tranh 2 kéo 4 bước. Bản 15/10/2026: JigsawGame.Move cộng cả tranh của mảnh bị đổi chỗ (swappedPieces) → đếm trùng",
+  "example": "Bức A xong sau 3 bước, bức B xong sau 4 bước nữa → move_complete = \"P1-3,P2-7\". Bản 15/10/2026: JigsawLevelAnalytics đếm riêng từng bức (pictureMoves), đánh số theo thứ tự bức, và JigsawGame.Move cộng cả bức của mảnh bị đổi chỗ → chưa đúng",
   "basis": "doc",
   "source": "QA Jigsaw · 15/10/2026",
   "status": "active"
