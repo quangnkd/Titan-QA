@@ -115,6 +115,7 @@ namespace Titan.TrackingQA
                     using var _ = Knowledge.ForGame(_gameId);
                     var spec = ExcelSpecReader.Read(doc);
                     if (_gameId != null && GameData.LoadOverlay(_gameId, doc) is { IsEmpty: false } ov) ov.Apply(spec);
+                    spec.ApplyLevel(QaRunner.MaxLevel);
                     _known = QaRunner.Report is { } r && SamePath(r.SpecFile, doc) ? r : null;
                     if (_known == null) Notices.Add("Chưa có Check all cho doc này — lỗi lúc chơi có thể trùng lỗi Check all sẽ báo, và chưa đối chiếu được với Check all.");
                     else

@@ -109,6 +109,14 @@ namespace Titan.TrackingQA
             seg.Add(_androidBtn);
             seg.Add(_iosBtn);
             top.Add(seg);
+            var levels = new List<string> { "Mọi Level", "Level 1", "Level 1–2", "Level 1–3", "Level 1–4", "Level 1–5" };
+            var level = new PopupField<string>(levels, Mathf.Clamp(QaRunner.MaxLevel, 0, levels.Count - 1))
+            {
+                tooltip = "Chỉ kiểm param / property có cột “Param/ Property Level” trong doc ≤ mức chọn (không báo thiếu, không tính ngoài plan với mục Level cao hơn). " +
+                          "Dòng doc không ghi Level cũng bỏ qua; doc không có cột Level thì kiểm tất cả. Áp cho cả Check all và Record — bấm Check all lại sau khi đổi.",
+            };
+            level.RegisterValueChangedCallback(_ => QaRunner.MaxLevel = level.index);
+            top.Add(level);
             _checkBtn = new Button(() => QaRunner.CheckAll(QaRunner.DocPath, QaRunner.Platform)) { text = "Check all" };
             _checkBtn.AddToClassList("primary");
             top.Add(_checkBtn);
@@ -306,7 +314,7 @@ namespace Titan.TrackingQA
         void RenderSummary(CheckReport r)
         {
             var docEvents = r.Subjects.Where(s => s.InDoc && !s.IsUserProperty).ToList();
-            _meta.text = $"So với <b>{r.SpecName}</b> ({Path.GetFileName(r.SpecFile)}) · {r.Platform} · Unity {r.UnityVersion} · {r.FilesAnalyzed} file code · " +
+            _meta.text = $"So với <b>{r.SpecName}</b> ({Path.GetFileName(r.SpecFile)}){(r.MaxLevel > 0 ? $" · chỉ Level 1–{r.MaxLevel}" : "")} · {r.Platform} · Unity {r.UnityVersion} · {r.FilesAnalyzed} file code · " +
                          $"{r.EmissionCount} luồng bắn · {r.AnalysisSeconds:F0}s · {r.CreatedAt:dd/MM HH:mm}" +
                          $"\nEvent trong doc không lỗi: <b>{docEvents.Count(s => s.Worst == FindingCategory.Ok)}/{docEvents.Count}</b>" +
                          (r.KnowledgeData != null ? $" · Kiến thức: {r.KnowledgeData}" : "") +

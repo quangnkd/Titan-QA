@@ -66,6 +66,15 @@ namespace Titan.TrackingQA
             set => EditorPrefs.SetString(PrefDoc + ProjectKey, value);
         }
 
+        const string PrefLevel = "Titan.TrackingQA.MaxLevel.";
+
+        /// <summary>Chỉ kiểm tới Level này của doc (cột "Param/ Property Level"), 0 = mọi Level — mỗi project nhớ riêng.</summary>
+        public static int MaxLevel
+        {
+            get => EditorPrefs.GetInt(PrefLevel + ProjectKey, 0);
+            set => EditorPrefs.SetInt(PrefLevel + ProjectKey, value);
+        }
+
         public static BuildPlatform Platform
         {
             get => EditorPrefs.GetInt(PrefPlatform, 0) == 1 ? BuildPlatform.iOS : BuildPlatform.Android;
@@ -183,7 +192,7 @@ namespace Titan.TrackingQA
             var useAi = UseClaude && ClaudeReady;
             var req = new CheckRequest
             {
-                RepoPath = ProjectRoot, SpecPath = docPath, Platform = platform, UseAi = useAi,
+                RepoPath = ProjectRoot, SpecPath = docPath, Platform = platform, UseAi = useAi, MaxLevel = MaxLevel,
                 UnityInstallPath = Path.GetDirectoryName(EditorApplication.applicationContentsPath),
             };
             var ai = useAi ? Ai() : null;
