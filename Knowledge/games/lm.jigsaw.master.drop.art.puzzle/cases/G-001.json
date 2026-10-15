@@ -1,21 +1,23 @@
 {
   "id": "G-001",
   "group": "Riêng game",
-  "title": "move_complete = \"Pn-x,…\" xếp theo thứ tự hoàn thành (bức clear đầu tiên đứng đầu): Pn = id bức tranh trong tool của GD (KHÔNG phải thứ tự bức trong level), x = số bước kéo mảnh của chính bức đó để hoàn thành nó — không cộng dồn, không tính khi mảnh của bức bị mảnh bức khác đẩy / đổi chỗ",
-  "why": "Data cần biết mỗi bức (theo id GD) tốn bao nhiêu bước và người chơi clear bức nào trước; dùng thứ tự trong level, cộng dồn hoặc đếm cả bức bị đổi chỗ đều làm sai số liệu",
+  "title": "move_complete = \"Pn-x,…\" xếp theo thứ tự hoàn thành (bức clear đầu tiên đứng đầu): Pn = id bức trong level data của level đó (bức đầu tiên trong danh sách pictures = P1), x = số bước kéo mảnh của chính bức đó để hoàn thành nó — không cộng dồn, không tính khi mảnh của bức bị mảnh bức khác đẩy / đổi chỗ",
+  "why": "Data cần biết mỗi bức (theo id trong level data) tốn bao nhiêu bước và người chơi clear bức nào trước; cộng dồn hoặc đếm cả bức bị đổi chỗ làm sai số liệu",
   "category": "Lỗi",
-  "check": { "kind": "manual" },
+  "check": {
+    "kind": "manual"
+  },
   "staticCheck": "no",
   "runtimeCheck": "manual",
   "fromRules": [],
   "match": [],
   "repro": [
-    "Vào level có từ 3 bức tranh trở lên, ghi lại id GD của từng bức trong level đó",
+    "Vào level có từ 3 bức tranh trở lên, xem thứ tự bức trong level data (Level_N.asset → pictures)",
     "Hoàn thành lần lượt 3 bức, đếm số bước kéo mảnh của từng bức",
     "Thử thêm: kéo 1 mảnh của 1 bức thả vào ô đang có mảnh của bức khác (2 mảnh đổi chỗ)",
-    "Xem level_end.move_complete. Đúng: \"P<id GD bức clear đầu>-<số bước của bức đó>,…\" theo thứ tự clear, vd \"P3-3,P1-2,P6-5\". Sai: số P là thứ tự bức trong level, xếp theo id thay vì thứ tự clear, cộng dồn, hoặc bức bị đổi chỗ cũng bị cộng 1"
+    "Xem level_end.move_complete. Đúng: \"P<id bức clear đầu>-<số bước của bức đó>,…\" theo thứ tự clear, vd \"P3-3,P1-2,P6-5\". Sai: xếp theo id thay vì thứ tự clear, cộng dồn, hoặc bức bị đổi chỗ cũng bị cộng 1"
   ],
-  "example": "Clear bức có id GD 3 sau 3 bước, bức id 1 sau 2 bước, bức id 6 sau 5 bước → move_complete = \"P3-3,P1-2,P6-5\". Bản 15/10/2026: dữ liệu level (JigsawLevel.Picture) chưa có id GD — JigsawLevelAnalytics.TrackEnd gửi thứ tự bức trong level (picture + 1) và xếp theo thứ tự đó; JigsawGame.Move cộng cả bức của mảnh bị đổi chỗ (swappedPieces)",
+  "example": "Clear bức 3 (trong level data) sau 3 bước, bức 1 sau 2 bước, bức 6 sau 5 bước → move_complete = \"P3-3,P1-2,P6-5\". Bản 15/10/2026 (commit 769d9cd): đã xếp theo thứ tự clear và Pn = picture + 1 (đúng); x đang là số bước kể từ lần clear trước (tính cả bước kéo bức khác)",
   "basis": "doc",
   "source": "QA Jigsaw · 15/10/2026",
   "status": "active"
