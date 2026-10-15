@@ -1,8 +1,8 @@
 {
   "id": "G-001",
   "group": "Riêng game",
-  "title": "move_complete = \"P1-m1,P2-m2,…\": Pn là bức tranh hoàn thành thứ n (theo thứ tự hoàn thành), m = TỔNG số bước kéo trong level tính đến lúc bức đó hoàn thành (cộng dồn); mỗi lần kéo thả = 1 bước, không tính trùng",
-  "why": "Data cần biết người chơi phải đi tổng bao nhiêu bước để xong bức đầu tiên, bức thứ 2…; đếm riêng từng bức hoặc đếm 1 lần kéo nhiều lần làm sai số liệu",
+  "title": "move_complete = \"P1-x1,P2-x2,…\": Pn là id bức tranh (thứ tự bức trong level, bắt đầu từ 1), x = số bước kéo mảnh của chính bức đó để hoàn thành nó — không cộng dồn, không tính khi mảnh của bức bị mảnh bức khác đẩy / đổi chỗ",
+  "why": "Data cần biết mỗi bức tranh tốn bao nhiêu bước; cộng dồn hoặc đếm cả bức bị đổi chỗ làm số bước của từng bức bị sai",
   "category": "Lỗi",
   "check": { "kind": "manual" },
   "staticCheck": "no",
@@ -11,11 +11,11 @@
   "match": [],
   "repro": [
     "Vào level có từ 2 bức tranh trở lên",
-    "Kéo 3 lần để hoàn thành 1 bức, rồi kéo thêm 4 lần để hoàn thành bức tiếp theo",
-    "Xem level_end.move_complete",
-    "Đúng: \"P1-3,P2-7\" (cộng dồn, theo thứ tự hoàn thành). Sai: \"P1-3,P2-4\" (đếm riêng từng bức), số theo thứ tự bức trong level thay vì thứ tự hoàn thành, hoặc 1 lần kéo đổi chỗ 2 bức bị tính 2 bước"
+    "Kéo 3 lần các mảnh của bức 1 để hoàn thành bức 1, rồi kéo 4 lần các mảnh của bức 2 để hoàn thành bức 2",
+    "Thử thêm: kéo 1 mảnh của bức 1 thả vào ô đang có mảnh của bức 2 (2 mảnh đổi chỗ)",
+    "Xem level_end.move_complete. Đúng: \"P1-3,P2-4\" (mỗi bức đếm riêng, lần đổi chỗ chỉ cộng cho bức được kéo). Sai: \"P1-3,P2-7\" (cộng dồn), hoặc bức bị đổi chỗ cũng bị cộng 1"
   ],
-  "example": "Bức A xong sau 3 bước, bức B xong sau 4 bước nữa → move_complete = \"P1-3,P2-7\". Bản 15/10/2026: JigsawLevelAnalytics đếm riêng từng bức (pictureMoves), đánh số theo thứ tự bức, và JigsawGame.Move cộng cả bức của mảnh bị đổi chỗ → chưa đúng",
+  "example": "Bức 1 xong sau 3 bước, bức 2 xong sau 4 bước → move_complete = \"P1-3,P2-4\". Bản 15/10/2026: JigsawLevelAnalytics đếm riêng từng bức (đúng) nhưng JigsawGame.Move cộng cả bức của mảnh bị đổi chỗ (swappedPieces) → đếm trùng",
   "basis": "doc",
   "source": "QA Jigsaw · 15/10/2026",
   "status": "active"
