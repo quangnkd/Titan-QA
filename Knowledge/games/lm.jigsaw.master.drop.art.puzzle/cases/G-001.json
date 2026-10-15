@@ -1,8 +1,8 @@
 {
   "id": "G-001",
   "group": "Riêng game",
-  "title": "move_complete = \"Pn-x,…\" xếp theo thứ tự hoàn thành (bức clear đầu tiên đứng đầu): Pn = id bức trong level data của level đó (bức đầu tiên trong danh sách pictures = P1), x = số bước kéo mảnh của chính bức đó để hoàn thành nó — không cộng dồn, không tính khi mảnh của bức bị mảnh bức khác đẩy / đổi chỗ",
-  "why": "Data cần biết mỗi bức (theo id trong level data) tốn bao nhiêu bước và người chơi clear bức nào trước; cộng dồn hoặc đếm cả bức bị đổi chỗ làm sai số liệu",
+  "title": "move_complete = \"Pn-x,…\" xếp theo thứ tự hoàn thành (bức clear đầu tiên đứng đầu): Pn = id bức trong level data của level đó (bức đầu tiên trong danh sách pictures = P1), x = số lần kéo thả kể từ lần clear trước đến lúc clear bức này (mọi lần kéo, kể cả kéo mảnh bức khác; về 0 sau mỗi lần clear; 1 lần kéo = 1 bước dù di chuyển nhiều mảnh)",
+  "why": "Data cần biết người chơi clear bức nào trước và mất bao nhiêu lần kéo giữa các lần clear; cộng dồn, đếm 1 lần kéo thành nhiều bước hoặc xếp sai thứ tự làm sai số liệu",
   "category": "Lỗi",
   "check": {
     "kind": "manual"
@@ -13,11 +13,11 @@
   "match": [],
   "repro": [
     "Vào level có từ 3 bức tranh trở lên, xem thứ tự bức trong level data (Level_N.asset → pictures)",
-    "Hoàn thành lần lượt 3 bức, đếm số bước kéo mảnh của từng bức",
-    "Thử thêm: kéo 1 mảnh của 1 bức thả vào ô đang có mảnh của bức khác (2 mảnh đổi chỗ)",
-    "Xem level_end.move_complete. Đúng: \"P<id bức clear đầu>-<số bước của bức đó>,…\" theo thứ tự clear, vd \"P3-3,P1-2,P6-5\". Sai: xếp theo id thay vì thứ tự clear, cộng dồn, hoặc bức bị đổi chỗ cũng bị cộng 1"
+    "Kéo 3 lần mảnh bức 3 → bức 3 xong; kéo 2 lần mảnh bức 6 rồi 2 lần mảnh bức 1 → bức 1 xong; kéo 3 lần mảnh bức 6 → bức 6 xong",
+    "Thử thêm: 1 lần kéo đổi chỗ 2 mảnh của 2 bức khác nhau chỉ tính 1 bước",
+    "Xem level_end.move_complete. Đúng: \"P3-3,P1-4,P6-3\". Sai: xếp theo id thay vì thứ tự clear, cộng dồn (vd \"P1-7\"), hoặc 1 lần kéo bị tính nhiều bước. 2 bức clear cùng lúc thì cùng nhận số bước của lần đó"
   ],
-  "example": "Clear bức 3 (trong level data) sau 3 bước, bức 1 sau 2 bước, bức 6 sau 5 bước → move_complete = \"P3-3,P1-2,P6-5\". Bản 15/10/2026 (commit 769d9cd): đã xếp theo thứ tự clear và Pn = picture + 1 (đúng); x đang là số bước kể từ lần clear trước (tính cả bước kéo bức khác)",
+  "example": "Ví dụ trên → move_complete = \"P3-3,P1-4,P6-3\". Bản 15/10/2026 (commit 769d9cd của NamLH) đã làm đúng như vậy: completionOrder, movesSinceLastCompletion, RecordMove() 1 lần / lần kéo",
   "basis": "doc",
   "source": "QA Jigsaw · 15/10/2026",
   "status": "active"
