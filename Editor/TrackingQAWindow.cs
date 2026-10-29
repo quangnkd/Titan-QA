@@ -311,14 +311,18 @@ namespace Titan.TrackingQA
             catch { return false; }
         }
 
+        /// <summary>Mã commit ngắn (phần đầu của <see cref="CheckReport.Commit"/>).</summary>
+        static string? ShortCommit(string? commit) => string.IsNullOrEmpty(commit) ? null : commit!.Split(' ')[0];
+
         void RenderSummary(CheckReport r)
         {
             var docEvents = r.Subjects.Where(s => s.InDoc && !s.IsUserProperty).ToList();
             _meta.text = $"So với <b>{r.SpecName}</b> ({Path.GetFileName(r.SpecFile)}){(r.MaxLevel > 0 ? $" · chỉ Level 1–{r.MaxLevel}" : "")} · {r.Platform} · Unity {r.UnityVersion} · {r.FilesAnalyzed} file code · " +
                          $"{r.EmissionCount} luồng bắn · {r.AnalysisSeconds:F0}s · {r.CreatedAt:dd/MM HH:mm}" +
+                         (r.Commit != null ? $"\nCommit: <b>{r.Commit}</b>" : "") +
                          $"\nEvent trong doc không lỗi: <b>{docEvents.Count(s => s.Worst == FindingCategory.Ok)}/{docEvents.Count}</b>" +
                          (r.KnowledgeData != null ? $" · Kiến thức: {r.KnowledgeData}" : "") +
-                         (r.PreviousAt != null ? $"\nSo với lần check trước ({r.PreviousAt:dd/MM HH:mm}): <b>{r.Findings.Count(f => f.IsNew && f.IsOpen)}</b> mục mới · <b>{r.FixedSincePrevious.Count}</b> đã sửa" : "") +
+                         (r.PreviousAt != null ? $"\nSo với lần check trước ({r.PreviousAt:dd/MM HH:mm}{(ShortCommit(r.PreviousCommit) is { } pc ? " · commit " + pc : "")}): <b>{r.Findings.Count(f => f.IsNew && f.IsOpen)}</b> mục mới · <b>{r.FixedSincePrevious.Count}</b> đã sửa" : "") +
                          (r.Findings.Count(f => f.CodeChanged && f.IsOpen) is var changed and > 0 ? $"\n<b>{changed}</b> mục có file code đã đổi từ lúc check — có thể đã sửa, bấm Check all để kiểm lại" : "") +
                          (r.AiStatus != null ? "\n" + r.AiStatus : "");
 
@@ -603,7 +607,8 @@ namespace Titan.TrackingQA
             head.Add(pill);
             head.Add(Tag(f.Id));
             if (f.RecordIssueId != null) head.Add(Tag("Record · " + f.RecordStatus, "rec-ok", "Lỗi gặp khi chơi trong Editor (bảng Lỗi Record) — Check all không thấy"));
-            if (f.IsNew && !isFixed && r.PreviousAt != null) head.Add(Tag("mới", "ai", $"Lần check trước ({r.PreviousAt:dd/MM HH:mm}) chưa có"));
+            if (f.IsNew && !isFixed && r.PreviousAt != null)
+                head.Add(Tag("mới", "ai", $"Lần check trước ({r.PreviousAt:dd/MM HH:mm}{(ShortCommit(r.PreviousCommit) is { } pc ? " · commit " + pc : "")}) chưa có"));
             if (f.CodeChanged) head.Add(Tag("code đã đổi — có thể đã sửa", "rec-ok", "File code chỗ này đã đổi từ lúc check / lúc Record gặp lỗi"));
             foreach (var cid in f.CaseIds)
             {
